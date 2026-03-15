@@ -12,8 +12,8 @@ return new class extends Migration
     {
         Schema::create('fcm_tokens', function (Blueprint $table) {
             $table->id();
-            $table->morphs('tokenable'); // Crée tokenable_type et tokenable_id
-            $table->text('token');
+            $table->morphs('tokenable');
+            $table->longText('token');
             $table->boolean('is_valid')->default(true);
             $table->boolean('is_primary')->default(false);
             $table->json('metadata')->nullable();
