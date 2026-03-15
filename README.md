@@ -1,6 +1,8 @@
+Tu as parfaitement raison ! Version 1.x, pas de migration dans le README, et le changelog est l'endroit approprié pour les instructions de mise à jour. Voici le README corrigé :
+
 # Laravel FCM Notifications
 
-[![PHP Version](https://img.shields.io/badge/PHP-8.1%2B-blue)](https://php.net)
+[![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-blue)](https://php.net)
 [![Laravel Version](https://img.shields.io/badge/Laravel-10%2F11%2F12-orange)](https://laravel.com)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -15,10 +17,11 @@ Ce package suit les principes SOLID et les bonnes pratiques de Laravel, avec une
 - **Intégration native** avec le système de notifications de Laravel
 - **Gestion automatique des tokens** : enregistrement, validation, invalidation
 - **Support multi-appareils** : un utilisateur peut avoir plusieurs tokens
-- **Nettoyage automatique** des tokens expirés ou inutilisés
+- **Token primaire dynamique** : le token le plus récemment utilisé est automatiquement considéré comme primaire
+- **Nettoyage automatique** des tokens expirés ou inutilisés (basé sur `last_used_at`)
 - **File d'attente** par défaut pour ne pas bloquer vos requêtes
 - **Logging détaillé** pour faciliter le débogage
-- **Tests exhaustifs** : plus de 40 tests unitaires et fonctionnels
+- **Tests exhaustifs** : plus de 50 tests unitaires et fonctionnels
 - **Traductions** : support multilingue (français, anglais)
 - **Commandes artisan** pour la maintenance et les tests
 
@@ -59,8 +62,6 @@ Ajoutez ensuite le chemin dans votre fichier `.env` :
 
 ```env
 FIREBASE_CREDENTIALS=/chemin/absolu/vers/firebase-credentials.json
-# ou
-FIREBASE_CREDENTIALS=storage_path('app/firebase-credentials.json')
 ```
 
 ---
@@ -73,31 +74,71 @@ Le fichier de configuration `config/fcm.php` vous permet de personnaliser le com
 <?php
 
 return [
-    // Chemin vers le fichier de credentials Firebase
+    /*
+    |--------------------------------------------------------------------------
+    | Firebase Credentials
+    |--------------------------------------------------------------------------
+    |
+    | Définit comment le package s'authentifie auprès de Firebase Cloud Messaging.
+    | Vous pouvez soit fournir un chemin vers le fichier JSON des credentials,
+    | soit définir la variable d'environnement FIREBASE_CREDENTIALS.
+    |
+    */
     'credentials' => env('FIREBASE_CREDENTIALS', storage_path('app/firebase-credentials.json')),
 
-    // Gestion des tokens
+    /*
+    |--------------------------------------------------------------------------
+    | Token Management
+    |--------------------------------------------------------------------------
+    |
+    | Configure la gestion du cycle de vie des tokens FCM :
+    | - Durée de validité des tokens inactifs
+    | - Limite de tokens par utilisateur/entité notifiable
+    | - Nettoyage automatique des tokens expirés
+    |
+    */
     'tokens' => [
-        // Durée de validité d'un token sans activité (en jours)
         'expire_inactive_days' => 30,
-
-        // Nombre maximum de tokens par notifiable
         'max_per_notifiable' => 10,
-
-        // Nettoyage automatique des tokens expirés
         'auto_clean' => true,
     ],
 
-    // Configuration des logs
+    /*
+    |--------------------------------------------------------------------------
+    | Logging Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Paramètres de journalisation des notifications FCM.
+    | Permet de tracer l'envoi des notifications et les éventuelles erreurs.
+    |
+    */
     'logging' => [
         'enabled' => env('FCM_LOGGING_ENABLED', true),
         'channel' => env('FCM_LOG_CHANNEL', 'stack'),
     ],
 
-    // Nom du canal dans les notifications
+    /*
+    |--------------------------------------------------------------------------
+    | Default Channel Name
+    |--------------------------------------------------------------------------
+    |
+    | Nom du canal à utiliser dans la méthode via() des notifications.
+    | Ce nom doit correspondre à celui défini dans config/services.php
+    | pour le driver FCM.
+    |
+    */
     'channel_name' => 'fcm',
 
-    // Configuration de la file d'attente
+    /*
+    |--------------------------------------------------------------------------
+    | Queue Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration de la file d'attente pour les notifications FCM.
+    | L'utilisation de la queue est recommandée pour ne pas bloquer
+    | la réponse HTTP lors de l'envoi de nombreuses notifications.
+    |
+    */
     'queue' => [
         'enabled' => env('FCM_QUEUE_ENABLED', true),
         'connection' => env('FCM_QUEUE_CONNECTION', 'redis'),
@@ -158,7 +199,6 @@ class FcmTokenController extends Controller
 
         $fcmToken = $user->registerFcmToken(
             token: $request->token,
-            isPrimary: $request->boolean('is_primary', true),
             metadata: $request->input('device_info', [])
         );
 
@@ -216,7 +256,7 @@ class NewMessageNotification extends Notification implements ShouldFcm
      */
     public function via($notifiable): array
     {
-        return ['database', 'fcm']; // 'fcm' est le nom par défaut du canal
+        return ['database', 'fcm'];
     }
 
     /**
@@ -263,28 +303,25 @@ $user->notify(new NewMessageNotification(
 ));
 ```
 
-Et voilà ! La notification sera automatiquement envoyée à tous les appareils de l'utilisateur via FCM.
+La notification sera automatiquement envoyée à tous les appareils valides de l'utilisateur via FCM.
 
 ---
 
-## 📊 Gestion avancée des tokens
+## 📊 Gestion des tokens
 
 ### Méthodes disponibles sur les modèles
-
-Lorsque vous utilisez le trait `HasFcmNotifications`, votre modèle dispose des méthodes suivantes :
 
 ```php
 // Enregistrer un nouveau token
 $user->registerFcmToken(
     token: 'device-token-123',
-    isPrimary: true,
     metadata: ['device' => 'iPhone 15', 'os' => 'iOS 17']
 );
 
-// Obtenir tous les tokens valides
-$tokens = $user->getFcmTokens(); // ['token-1', 'token-2']
+// Obtenir tous les tokens valides (triés du plus récent au plus ancien)
+$tokens = $user->getFcmTokens(); // ['token-2', 'token-1']
 
-// Obtenir le token principal
+// Obtenir le token principal (le plus récemment utilisé)
 $primaryToken = $user->getPrimaryFcmToken();
 
 // Vérifier si l'utilisateur a des tokens
@@ -298,13 +335,28 @@ $user->invalidateFcmToken('token-1');
 // Invalider tous les tokens
 $user->invalidateAllFcmTokens();
 
+// Marquer un token comme utilisé (met à jour last_used_at)
+$token = $user->fcmTokens()->first();
+$token->markAsUsed();
+
+// Invalider un token directement
+$token->invalidate();
+
 // Relation avec les tokens
 $tokens = $user->fcmTokens()->get();
 ```
 
-### Gestion automatique des tokens invalides
+### Token primaire dynamique
 
-Le canal FCM invalide automatiquement les tokens quand Firebase retourne une erreur `UNREGISTERED` (token invalide). Vous n'avez rien à faire !
+Le token primaire n'est plus un champ statique en base de données. Il est déterminé dynamiquement comme étant le token valide le plus récemment utilisé (basé sur `last_used_at`). Cela signifie que :
+
+- Vous n'avez plus besoin de gérer manuellement quel token est primaire
+- L'attribut `is_primary` est maintenant un accesseur dynamique sur le modèle `FcmToken`
+- La gestion des tokens est plus simple et plus intuitive
+
+### Gestion automatique des tokens
+
+Le canal FCM invalide automatiquement les tokens quand Firebase retourne une erreur `UNREGISTERED`. Les tokens sont également automatiquement nettoyés selon la limite configurée (LRU - Least Recently Used) : quand un utilisateur dépasse le nombre maximum de tokens autorisé, les tokens les plus anciens sont automatiquement supprimés.
 
 ---
 
@@ -319,7 +371,7 @@ php artisan fcm:clean-tokens
 # Spécifier une durée personnalisée
 php artisan fcm:clean-tokens --days=15
 
-# Simuler le nettoyage sans supprimer
+# Simuler le nettoyage sans invalider
 php artisan fcm:clean-tokens --dry-run
 ```
 
@@ -331,6 +383,9 @@ php artisan fcm:test-connection device-token-123
 
 # Avec titre et corps personnalisés
 php artisan fcm:test-connection device-token-123 --title="Test" --body="Ceci est un test"
+
+# Mode verbeux pour plus de détails
+php artisan fcm:test-connection device-token-123 --verbose
 ```
 
 ---
@@ -373,39 +428,15 @@ try {
 Si le logging est activé, vous trouverez des entrées utiles dans vos logs :
 
 ```
-[info] FCM notification sent: {"notifiable_type":"App\Models\User","notifiable_id":1,"token":"device-123","message_id":"projects/.../messages/msg-123"}
-[info] FCM token invalidated: {"notifiable_type":"App\Models\User","notifiable_id":1,"token":"device-456"}
-[error] FCM send error: {"error_code":"UNREGISTERED","status_code":404}
+[info] FCM notification sent successfully: {"notifiable_type":"App\Models\User","notifiable_id":1,"token":"device-123","message_id":"projects/.../messages/msg-123"}
+[info] FCM token invalidated and removed: {"notifiable_type":"App\Models\User","notifiable_id":1,"token":"device-456"}
+[info] FCM multicast notification completed: {"notifiable_type":"App\Models\User","notifiable_id":1,"total_tokens":5,"successful_sends":4,"failed_sends":1,"invalidated_tokens":1}
+[error] FCM authentication failed: {"notifiable_type":"App\Models\User","notifiable_id":1,"notification":"App\Notifications\NewMessageNotification"}
 ```
 
 ---
 
-## 🧪 Tests
-
-Le package est livré avec une suite de tests exhaustive (plus de 40 tests).
-
-### Configuration des tests
-
-```bash
-# Créer le fichier de test
-cp phpunit.xml.dist phpunit.xml
-
-# Exécuter tous les tests
-composer test
-
-# Exécuter un test spécifique
-./vendor/bin/phpunit --filter test_can_register_fcm_token
-```
-
-### Structure des tests
-
-- **Unitaires** : tests des modèles, traits, canaux
-- **Fonctionnels** : tests des flux complets
-- **Commandes** : tests des commandes artisan
-
----
-
-## 🔧 Architecture technique
+## 🔧 Architecture
 
 ### Contrats (Interfaces)
 
@@ -420,134 +451,35 @@ composer test
 - `CleanExpiredTokensCommand` : commande de nettoyage
 - `TestFcmConnectionCommand` : commande de test
 
-### Dépendances
-
-Ce package repose sur [andydefer/push-notifier](https://github.com/andydefer/push-notifier), un package PHP robuste pour l'envoi de notifications via FCM.
-
 ---
 
-## 🌐 Traductions
-
-Le package supporte le français et l'anglais. Pour personnaliser les messages :
+## 🧪 Tests
 
 ```bash
-php artisan vendor:publish --provider="Andydefer\FcmNotifications\FcmNotificationServiceProvider" --tag="fcm-translations"
-```
+# Exécuter tous les tests
+composer test
 
-Puis modifiez les fichiers dans `resources/lang/vendor/fcm/`.
+# Exécuter un test spécifique
+./vendor/bin/phpunit --filter test_can_register_fcm_token_with_metadata
+```
 
 ---
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues ! Voici comment contribuer :
+Les contributions sont les bienvenues !
 
 1. **Forkez** le projet
 2. **Créez une branche** (`git checkout -b feature/ma-fonctionnalite`)
-3. **Commitez** vos changements (`git commit -m 'Ajoute une fonctionnalité'`)
+3. **Commitez** vos changements (`git commit -m 'feat: ajoute une fonctionnalité'`)
 4. **Poussez** la branche (`git push origin feature/ma-fonctionnalite`)
 5. **Ouvrez une Pull Request**
-
-### Guide de contribution
-
-- Suivez les conventions de code PSR-12
-- Ajoutez des tests pour toute nouvelle fonctionnalité
-- Assurez-vous que tous les tests passent (`composer test`)
-- Documentez les nouvelles fonctionnalités
 
 ---
 
 ## 📄 Licence
 
-Ce package est open-source et disponible sous la licence [MIT](LICENSE). Vous êtes libre de l'utiliser, le modifier et le distribuer.
-
----
-
-## 🙏 Remerciements
-
-- [Laravel](https://laravel.com) pour son système de notifications
-- [Firebase](https://firebase.google.com) pour FCM
-- Tous les contributeurs du package [push-notifier](https://github.com/andydefer/push-notifier)
-
----
-
-## 🆘 Support
-
-Si vous rencontrez des problèmes :
-
-1. **Consultez la documentation** de ce README
-2. **Vérifiez les issues** existantes sur GitHub
-3. **Créez une nouvelle issue** avec :
-   - Une description claire du problème
-   - Les étapes pour reproduire
-   - Votre environnement (PHP, Laravel, versions)
-
----
-
-## 🚀 Exemple complet
-
-Voici un exemple complet d'utilisation dans une application Laravel typique :
-
-```php
-<?php
-
-namespace App\Http\Controllers;
-
-use App\Models\User;
-use App\Notifications\OrderConfirmationNotification;
-use Illuminate\Http\Request;
-
-class OrderController extends Controller
-{
-    public function store(Request $request)
-    {
-        // ... création de la commande
-
-        $user = User::find($request->user_id);
-
-        // Envoyer une notification (sera délivrée par FCM si l'utilisateur a des tokens)
-        $user->notify(new OrderConfirmationNotification(
-            orderId: $order->id,
-            total: $order->total
-        ));
-
-        return response()->json(['message' => 'Commande créée avec succès']);
-    }
-}
-
-// La notification
-namespace App\Notifications;
-
-use Andydefer\FcmNotifications\Contracts\ShouldFcm;
-use Andydefer\PushNotifier\Dtos\FcmMessageData;
-use Illuminate\Notifications\Notification;
-
-class OrderConfirmationNotification extends Notification implements ShouldFcm
-{
-    public function __construct(
-        protected int $orderId,
-        protected float $total
-    ) {}
-
-    public function via($notifiable): array
-    {
-        return ['mail', 'database', 'fcm'];
-    }
-
-    public function toFcm($notifiable): FcmMessageData
-    {
-        return FcmMessageData::success(
-            title: 'Commande confirmée',
-            body: "Votre commande #{$this->orderId} d'un montant de {$this->total}€ a été confirmée.",
-            data: [
-                'order_id' => (string) $this->orderId,
-                'total' => (string) $this->total,
-                'type' => 'order_confirmation',
-            ]
-        );
-    }
-}
-```
+Ce package est open-source et disponible sous la licence [MIT](LICENSE).
 
 ---
 
