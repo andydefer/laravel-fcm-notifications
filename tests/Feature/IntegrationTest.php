@@ -5,128 +5,189 @@ declare(strict_types=1);
 namespace Andydefer\FcmNotifications\Tests\Feature;
 
 use Andydefer\FcmNotifications\Models\FcmToken;
-use Andydefer\FcmNotifications\Tests\Fixtures\TestFcmNotification;
 use Andydefer\FcmNotifications\Tests\Fixtures\TestUser;
 use Andydefer\FcmNotifications\Tests\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
+/**
+ * Feature tests for the complete FCM notification system.
+ *
+ * This test suite verifies the integration between all components of the package:
+ * - Token registration and management
+ * - Multiple users and tokens handling
+ * - Token limits enforcement
+ * - Cascade deletions
+ *
+ * @package Andydefer\FcmNotifications\Tests\Feature
+ */
 class IntegrationTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
-     * Test full lifecycle of FCM tokens.
+     * Test the complete lifecycle of FCM tokens from registration to deletion.
+     *
+     * This test verifies:
+     * 1. Token registration with metadata
+     * 2. Primary token management (based on most recent)
+     * 3. Token usage tracking
+     * 4. Token invalidation
+     * 5. Primary token reassignment
+     * 6. Cascade deletion when user is removed
+     *
+     * @return void
      */
-    public function test_full_token_lifecycle(): void
+    public function test_complete_token_lifecycle(): void
     {
-        // ✅ Modifier pour que ce test n'utilise pas réellement Firebase
-        // On va mocker le canal FCM pour éviter la vraie connexion
-
-        // 1. User registers tokens
+        // Arrange: Create a user and register multiple tokens with metadata
         $user = $this->createTestUser();
-        $user->registerFcmToken('token-1', metadata: ['device' => 'iPhone']);
-        $user->registerFcmToken('token-2', isPrimary: true, metadata: ['device' => 'iPad']);
 
+        $user->registerFcmToken(
+            token: 'token-1',
+            metadata: ['device' => 'iPhone']
+        );
+
+        // Wait to ensure different timestamps
+        sleep(1);
+
+        $user->registerFcmToken(
+            token: 'token-2',
+            metadata: ['device' => 'iPad']
+        );
+
+        // Assert: Initial token registration is correct
         $this->assertCount(2, $user->getFcmTokens());
+        // The most recent token (token-2) should be primary
         $this->assertEquals('token-2', $user->getPrimaryFcmToken());
 
-        // 2. Send notification (sans réellement envoyer)
-        $notification = new TestFcmNotification('Test', 'Message');
-
-        // On ne notifie pas réellement pour éviter la connexion Firebase
-        // $user->notify($notification);
-
-        // 3. Token usage updates last_used_at
+        // Act: Simulate token usage by updating last_used_at for token-1
         $token = $user->fcmTokens()->where('token', 'token-1')->first();
         $token->update(['last_used_at' => now()]);
 
-        // 4. Token becomes invalid
+        // Now token-1 becomes primary (most recent)
+        $this->assertEquals('token-1', $user->getPrimaryFcmToken());
+
+        // Act: Invalidate token-1
         $user->invalidateFcmToken('token-1');
+
+        // Assert: Only token-2 remains active and becomes primary
         $this->assertCount(1, $user->getFcmTokens());
         $this->assertEquals(['token-2'], $user->getFcmTokens());
+        $this->assertEquals('token-2', $user->getPrimaryFcmToken());
 
-        // 5. User registers new token, old primary is automatically unset
-        $user->registerFcmToken('token-3', isPrimary: true);
+        // Act: Register a new token
+        sleep(1);
+        $user->registerFcmToken(token: 'token-3');
+
+        // Assert: New token becomes primary (most recent)
         $this->assertCount(2, $user->getFcmTokens());
         $this->assertEquals('token-3', $user->getPrimaryFcmToken());
 
-        $primaryTokens = $user->fcmTokens()->primary()->get();
-        $this->assertCount(1, $primaryTokens);
-        $this->assertEquals('token-3', $primaryTokens[0]->token);
-
-        // 6. User is deleted - tokens are also deleted
+        // Act: Delete the user
         $userId = $user->id;
         $user->delete();
 
+        // Assert: All associated tokens are cascade deleted
         $remainingTokens = FcmToken::where('tokenable_type', TestUser::class)
             ->where('tokenable_id', $userId)
             ->count();
+
         $this->assertEquals(0, $remainingTokens);
     }
 
     /**
-     * Test multiple users with multiple tokens.
+     * Test that multiple users can manage their tokens independently.
+     *
+     * This test verifies:
+     * - Token isolation between different users
+     * - Correct token counts per user
+     * - Global token count accuracy
+     *
+     * @return void
      */
-    public function test_multiple_users_multiple_tokens(): void
+    public function test_token_isolation_between_multiple_users(): void
     {
-        // ✅ Correction : emails uniques
-        $user1 = $this->createTestUser([
-            'name' => 'User 1',
-            'email' => 'user1@example.com'  // Email unique
+        // Arrange: Create three users with different token configurations
+        $userWithTwoTokens = $this->createTestUser([
+            'name' => 'User With Two Tokens',
+            'email' => 'two.tokens@example.com'
         ]);
-        $user1->registerFcmToken('user1-token1');
-        $user1->registerFcmToken('user1-token2');
+        $userWithTwoTokens->registerFcmToken('user1-token1');
+        $userWithTwoTokens->registerFcmToken('user1-token2');
 
-        $user2 = $this->createTestUser([
-            'name' => 'User 2',
-            'email' => 'user2@example.com'  // Email unique
+        $userWithOneToken = $this->createTestUser([
+            'name' => 'User With One Token',
+            'email' => 'one.token@example.com'
         ]);
-        $user2->registerFcmToken('user2-token1');
+        $userWithOneToken->registerFcmToken('user2-token1');
 
-        $user3 = $this->createTestUser([
-            'name' => 'User 3',
-            'email' => 'user3@example.com'  // Email unique
-        ]); // No tokens
+        $userWithNoTokens = $this->createTestUser([
+            'name' => 'User With No Tokens',
+            'email' => 'no.tokens@example.com'
+        ]);
 
-        // Assert counts
-        $this->assertCount(2, $user1->getFcmTokens());
-        $this->assertCount(1, $user2->getFcmTokens());
-        $this->assertCount(0, $user3->getFcmTokens());
+        // Assert: Each user has the expected number of tokens
+        $this->assertCount(2, $userWithTwoTokens->getFcmTokens());
+        $this->assertCount(1, $userWithOneToken->getFcmTokens());
+        $this->assertCount(0, $userWithNoTokens->getFcmTokens());
 
-        $this->assertTrue($user1->hasFcmTokens());
-        $this->assertTrue($user2->hasFcmTokens());
-        $this->assertFalse($user3->hasFcmTokens());
+        $this->assertTrue($userWithTwoTokens->hasFcmTokens());
+        $this->assertTrue($userWithOneToken->hasFcmTokens());
+        $this->assertFalse($userWithNoTokens->hasFcmTokens());
 
-        // Total tokens in database
+        // Assert: Total tokens in database matches sum of individual counts
         $totalTokens = FcmToken::count();
         $this->assertEquals(3, $totalTokens);
 
-        // Filter by user
-        $user1Tokens = FcmToken::where('tokenable_type', TestUser::class)
-            ->where('tokenable_id', $user1->id)
+        // Assert: Tokens are correctly scoped to their respective users
+        $userOneTokens = FcmToken::where('tokenable_type', TestUser::class)
+            ->where('tokenable_id', $userWithTwoTokens->id)
             ->count();
-        $this->assertEquals(2, $user1Tokens);
+        $this->assertEquals(2, $userOneTokens);
+
+        $userTwoTokens = FcmToken::where('tokenable_type', TestUser::class)
+            ->where('tokenable_id', $userWithOneToken->id)
+            ->count();
+        $this->assertEquals(1, $userTwoTokens);
     }
 
     /**
-     * Test token limits per user.
+     * Test that token limits per user are enforced with LRU behavior.
+     *
+     * This test verifies:
+     * - Configuration-based token limits are respected
+     * - Oldest token is automatically removed when limit is exceeded
+     * - New token is successfully added within limits
+     *
+     * @return void
      */
-    public function test_token_limits_per_user(): void
+    public function test_enforces_token_limit_with_lru_eviction(): void
     {
+        // Arrange: Configure a limit of 3 tokens per user
         config(['fcm.tokens.max_per_notifiable' => 3]);
 
         $user = $this->createTestUser();
 
-        // Register up to limit
+        // Register tokens up to the limit
         $user->registerFcmToken('token-1');
         $user->registerFcmToken('token-2');
         $user->registerFcmToken('token-3');
 
+        // Ensure tokens have different timestamps
+        sleep(1);
+
+        // Assert: User has exactly the limit number of tokens
         $this->assertCount(3, $user->getFcmTokens());
 
-        // This should replace the oldest token
-        sleep(1); // Ensure different timestamps
+        // Act: Register one more token (should replace the oldest)
         $user->registerFcmToken('token-4');
 
-        $this->assertCount(3, $user->getFcmTokens());
-        $this->assertContains('token-4', $user->getFcmTokens());
-        $this->assertNotContains('token-1', $user->getFcmTokens());
+        // Assert: Token count remains at limit, oldest token (token-1) is removed
+        $activeTokens = $user->getFcmTokens();
+        $this->assertCount(3, $activeTokens);
+        $this->assertContains('token-4', $activeTokens);
+        $this->assertNotContains('token-1', $activeTokens);
+        $this->assertContains('token-2', $activeTokens);
+        $this->assertContains('token-3', $activeTokens);
     }
 }

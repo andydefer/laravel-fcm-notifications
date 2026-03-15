@@ -7,20 +7,38 @@ namespace Andydefer\FcmNotifications\Tests\Unit\Console\Commands;
 use Andydefer\FcmNotifications\Models\FcmToken;
 use Andydefer\FcmNotifications\Tests\TestCase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
+/**
+ * Unit tests for the CleanExpiredTokensCommand.
+ *
+ * This test suite verifies the behavior of the token cleanup command:
+ * - Cleaning expired tokens based on inactivity period
+ * - Respecting custom days threshold from command options
+ * - Dry-run mode that shows preview without making changes
+ * - Handling scenarios with no expired tokens
+ *
+ * @package Andydefer\FcmNotifications\Tests\Unit\Console\Commands
+ */
 class CleanExpiredTokensCommandTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
-     * Test that command cleans expired tokens.
+     * Test that the command correctly identifies and invalidates expired tokens.
+     *
+     * This test verifies that tokens not used within the configured inactivity
+     * period are properly invalidated, while recently used tokens remain valid.
+     *
+     * @return void
      */
-    public function test_cleans_expired_tokens(): void
+    public function test_invalidates_tokens_not_used_within_configured_period(): void
     {
-        // Arrange
+        // Arrange: Create a mix of expired and valid tokens
         config(['fcm.tokens.expire_inactive_days' => 30]);
 
         $user = $this->createTestUser();
 
-        // Create tokens with different last_used_at
         $user->fcmTokens()->createMany([
             ['token' => 'expired-1', 'last_used_at' => now()->subDays(40), 'is_valid' => true],
             ['token' => 'expired-2', 'last_used_at' => now()->subDays(35), 'is_valid' => true],
@@ -29,25 +47,33 @@ class CleanExpiredTokensCommandTest extends TestCase
             ['token' => 'already-invalid', 'last_used_at' => now()->subDays(50), 'is_valid' => false],
         ]);
 
-        // Act
+        // Act: Execute the cleanup command
         Artisan::call('fcm:clean-tokens');
 
-        // Assert
+        // Assert: Only valid tokens remain and correct output is displayed
         $validTokens = FcmToken::valid()->get();
         $this->assertCount(2, $validTokens);
         $this->assertEquals('valid-1', $validTokens[0]->token);
         $this->assertEquals('valid-2', $validTokens[1]->token);
 
         $output = Artisan::output();
-        $this->assertStringContainsString('Cleaned 2 expired FCM tokens', $output);
+        $this->assertStringContainsString(
+            'Successfully invalidated 2 token(s) inactive for 30 day(s)',
+            $output
+        );
     }
 
     /**
-     * Test that command respects custom days option.
+     * Test that the command respects a custom days threshold from the --days option.
+     *
+     * This test verifies that when a custom inactivity period is provided via
+     * the command line, it overrides the configuration value.
+     *
+     * @return void
      */
-    public function test_respects_custom_days_option(): void
+    public function test_uses_custom_inactivity_period_from_command_option(): void
     {
-        // Arrange
+        // Arrange: Create tokens with various last_used_at dates
         $user = $this->createTestUser();
 
         $user->fcmTokens()->createMany([
@@ -56,24 +82,33 @@ class CleanExpiredTokensCommandTest extends TestCase
             ['token' => 'recent', 'last_used_at' => now()->subDays(5), 'is_valid' => true],
         ]);
 
-        // Act
+        // Act: Run cleanup with custom 10-day threshold
         Artisan::call('fcm:clean-tokens', ['--days' => 10]);
 
-        // Assert
+        // Assert: Only tokens used within last 10 days remain valid
         $validTokens = FcmToken::valid()->get();
         $this->assertCount(1, $validTokens);
         $this->assertEquals('recent', $validTokens[0]->token);
 
         $output = Artisan::output();
-        $this->assertStringContainsString('Cleaned 2 expired FCM tokens', $output);
+        $this->assertStringContainsString(
+            'Successfully invalidated 2 token(s) inactive for 10 day(s)',
+            $output
+        );
     }
 
     /**
-     * Test dry run option.
+     * Test that dry-run mode shows preview without actually invalidating tokens.
+     *
+     * This test verifies that when the --dry-run option is used, the command
+     * reports which tokens would be invalidated but leaves them valid in the
+     * database.
+     *
+     * @return void
      */
-    public function test_dry_run_option(): void
+    public function test_dry_run_mode_previews_changes_without_persisting_them(): void
     {
-        // Arrange
+        // Arrange: Create a mix of expired and valid tokens
         $user = $this->createTestUser();
 
         $user->fcmTokens()->createMany([
@@ -81,23 +116,32 @@ class CleanExpiredTokensCommandTest extends TestCase
             ['token' => 'valid', 'last_used_at' => now(), 'is_valid' => true],
         ]);
 
-        // Act
+        // Act: Run command in dry-run mode
         Artisan::call('fcm:clean-tokens', ['--dry-run' => true]);
 
-        // Assert - tokens should still be valid
+        // Assert: All tokens remain valid in database
         $validTokens = FcmToken::valid()->get();
         $this->assertCount(2, $validTokens);
 
+        // Assert: Output shows what would be cleaned
         $output = Artisan::output();
-        $this->assertStringContainsString('Found 1 expired tokens that would be cleaned', $output);
+        $this->assertStringContainsString(
+            'Found 1 token(s) inactive for 30 day(s) that would be invalidated. No changes were made.',
+            $output
+        );
     }
 
     /**
-     * Test that command handles no expired tokens.
+     * Test that the command handles the case when no tokens are expired.
+     *
+     * This test verifies that when all tokens are within the inactivity period,
+     * the command reports zero invalidations and makes no changes.
+     *
+     * @return void
      */
-    public function test_handles_no_expired_tokens(): void
+    public function test_reports_zero_invalidations_when_no_tokens_are_expired(): void
     {
-        // Arrange
+        // Arrange: Create only recently used tokens
         $user = $this->createTestUser();
 
         $user->fcmTokens()->createMany([
@@ -105,14 +149,18 @@ class CleanExpiredTokensCommandTest extends TestCase
             ['token' => 'valid-2', 'last_used_at' => now()->subDays(5), 'is_valid' => true],
         ]);
 
-        // Act
+        // Act: Run cleanup command
         Artisan::call('fcm:clean-tokens');
 
-        // Assert
+        // Assert: All tokens remain valid
         $validTokens = FcmToken::valid()->get();
         $this->assertCount(2, $validTokens);
 
+        // Assert: Output confirms no tokens were invalidated
         $output = Artisan::output();
-        $this->assertStringContainsString('Cleaned 0 expired FCM tokens', $output);
+        $this->assertStringContainsString(
+            'Successfully invalidated 0 token(s) inactive for 30 day(s)',
+            $output
+        );
     }
 }

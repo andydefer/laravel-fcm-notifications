@@ -16,160 +16,310 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
+use Exception;
 
+/**
+ * Laravel notification channel for sending Firebase Cloud Messaging (FCM) notifications.
+ *
+ * This channel handles sending push notifications to both single and multiple devices
+ * using FCM. It supports token validation, automatic invalidation of expired tokens,
+ * and comprehensive logging for debugging and monitoring purposes.
+ *
+ * @package Andydefer\FcmNotifications\Channels
+ */
 class FcmChannel implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    protected NotificationFactory $factory;
-    protected string $credentialsPath;
+    private NotificationFactory $notificationFactory;
+    private string $credentialsPath;
 
-    public function __construct(?NotificationFactory $factory = null, ?string $credentialsPath = null)
-    {
-        $this->factory = $factory ?? new NotificationFactory();
+    /**
+     * Create a new FCM channel instance.
+     *
+     * @param NotificationFactory|null $notificationFactory Factory for creating Firebase services
+     * @param string|null $credentialsPath Path to the Firebase credentials JSON file
+     */
+    public function __construct(
+        ?NotificationFactory $notificationFactory = null,
+        ?string $credentialsPath = null
+    ) {
+        $this->notificationFactory = $notificationFactory ?? new NotificationFactory();
         $this->credentialsPath = $credentialsPath ?? Config::get('fcm.credentials');
     }
 
     /**
-     * Send the given notification.
+     * Send the given notification to FCM.
+     *
+     * This method validates that both the notifiable entity and notification
+     * implement the required interfaces before attempting to send. It handles
+     * single and multicast messages, and automatically invalidates tokens that
+     * are no longer valid.
+     *
+     * @param mixed $notifiable The entity receiving the notification
+     * @param Notification $notification The notification to send
+     * @return void
      */
     public function send($notifiable, Notification $notification): void
     {
-        // Validate notifiable implements the contract
-        if (! $notifiable instanceof HasFcmToken) {
-            $this->logWarning('Notifiable does not implement HasFcmToken', $notifiable);
+        if (!$this->isValidNotifiable($notifiable, $notification)) {
             return;
         }
 
-        // Vérification typée avec l'interface
-        if (! $notification instanceof ShouldFcm) {
-            $this->logWarning('Notification must implement ShouldFcm interface', $notifiable, $notification);
-            return;
-        }
-
-        // ✅ Vérification cruciale : si pas de tokens, on arrête immédiatement
-        if (! $notifiable->hasFcmTokens()) {
-            return; // Pas de logs, pas d'erreurs, on ignore silencieusement
-        }
-
-        // Get tokens
+        /** @var HasFcmToken $notifiable */
         $tokens = $notifiable->getFcmTokens();
 
         if (empty($tokens)) {
             return;
         }
 
-        // Maintenant PHPStan sait que toFcm existe
+        /** @var ShouldFcm $notification */
         $message = $notification->toFcm($notifiable);
 
         try {
-            $this->sendNotification($notifiable, $tokens, $message);
-        } catch (\Exception $e) {
-            $this->handleException($e, $notifiable, $notification);
+            $this->sendToTokens($notifiable, $tokens, $message);
+        } catch (Exception $exception) {
+            $this->handleSendingException($exception, $notifiable, $notification);
         }
     }
 
     /**
-     * Send the notification to FCM.
+     * Validate that the notifiable and notification implement required interfaces.
+     *
+     * @param mixed $notifiable The entity to validate
+     * @param Notification $notification The notification to validate
+     * @return bool True if both implement required interfaces
      */
-    protected function sendNotification(HasFcmToken $notifiable, array $tokens, FcmMessageData $message): void
+    private function isValidNotifiable($notifiable, Notification $notification): bool
     {
-        $firebaseService = $this->factory->makeFirebaseServiceFromJsonFile($this->credentialsPath);
+        if (!$notifiable instanceof HasFcmToken) {
+            $this->logWarning('Notifiable must implement HasFcmToken interface', $notifiable);
+            return false;
+        }
 
-        // Single token
+        if (!$notification instanceof ShouldFcm) {
+            $this->logWarning('Notification must implement ShouldFcm interface', $notifiable, $notification);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Send the notification to one or multiple FCM tokens.
+     *
+     * @param HasFcmToken $notifiable The entity receiving the notification
+     * @param array<string> $tokens Array of FCM tokens
+     * @param FcmMessageData $message The message to send
+     * @return void
+     */
+    private function sendToTokens(HasFcmToken $notifiable, array $tokens, FcmMessageData $message): void
+    {
+        $firebaseService = $this->notificationFactory->makeFirebaseServiceFromJsonFile(
+            jsonFilePath: $this->credentialsPath
+        );
+
         if (count($tokens) === 1) {
-            $token = $tokens[0];
-            $response = $firebaseService->send($token, $message);
-
-            if ($response->isInvalidToken()) {
-                $notifiable->invalidateFcmToken($token);
-                $this->logInfo('FCM token invalidated', $notifiable, ['token' => $token]);
-            }
-
-            $this->logInfo('FCM notification sent', $notifiable, [
-                'token' => $token,
-                'message_id' => $response->messageId,
-            ]);
-
+            $this->sendSingleNotification($notifiable, $tokens[0], $firebaseService, $message);
             return;
         }
 
-        // Multiple tokens
-        $results = $firebaseService->sendMulticast($tokens, $message);
+        $this->sendMulticastNotification($notifiable, $tokens, $firebaseService, $message);
+    }
 
-        foreach ($results as $token => $response) {
-            if ($response->isInvalidToken()) {
-                $notifiable->invalidateFcmToken($token);
-                $this->logInfo('FCM token invalidated', $notifiable, ['token' => $token]);
-            }
+    /**
+     * Send a notification to a single device.
+     *
+     * @param HasFcmToken $notifiable The entity receiving the notification
+     * @param string $token Single FCM token
+     * @param mixed $firebaseService Firebase service instance
+     * @param FcmMessageData $message The message to send
+     * @return void
+     */
+    private function sendSingleNotification(
+        HasFcmToken $notifiable,
+        string $token,
+        $firebaseService,
+        FcmMessageData $message
+    ): void {
+        $response = $firebaseService->send($token, $message);
+
+        if ($response->isInvalidToken()) {
+            $notifiable->invalidateFcmToken($token);
+            $this->logInfo('FCM token invalidated and removed', $notifiable, ['token' => $token]);
         }
 
-        $successCount = count(array_filter($results, fn($r) => $r->success));
-        $this->logInfo('FCM multicast sent', $notifiable, [
-            'total' => count($tokens),
-            'success' => $successCount,
-            'failed' => count($tokens) - $successCount,
+        $this->logInfo('FCM notification sent successfully', $notifiable, [
+            'token' => $token,
+            'message_id' => $response->messageId,
         ]);
     }
 
     /**
-     * Handle exceptions during sending.
+     * Send a notification to multiple devices.
+     *
+     * @param HasFcmToken $notifiable The entity receiving the notification
+     * @param array<string> $tokens Array of FCM tokens
+     * @param mixed $firebaseService Firebase service instance
+     * @param FcmMessageData $message The message to send
+     * @return void
      */
-    protected function handleException(\Exception $e, $notifiable, $notification): void
+    private function sendMulticastNotification(
+        HasFcmToken $notifiable,
+        array $tokens,
+        $firebaseService,
+        FcmMessageData $message
+    ): void {
+        $results = $firebaseService->sendMulticast($tokens, $message);
+        $invalidTokens = 0;
+
+        foreach ($results as $token => $response) {
+            if ($response->isInvalidToken()) {
+                $notifiable->invalidateFcmToken($token);
+                $invalidTokens++;
+                $this->logInfo('FCM token invalidated and removed', $notifiable, ['token' => $token]);
+            }
+        }
+
+        $successCount = count(array_filter($results, fn($response) => $response->success));
+
+        $this->logInfo('FCM multicast notification completed', $notifiable, [
+            'total_tokens' => count($tokens),
+            'successful_sends' => $successCount,
+            'failed_sends' => count($tokens) - $successCount,
+            'invalidated_tokens' => $invalidTokens,
+        ]);
+    }
+
+    /**
+     * Handle exceptions that occur during notification sending.
+     *
+     * @param Exception $exception The caught exception
+     * @param HasFcmToken $notifiable The notifiable entity
+     * @param Notification|ShouldFcm $notification The notification being sent
+     * @return void
+     * @throws Exception If queue is disabled, rethrows the exception
+     */
+    private function handleSendingException(
+        Exception $exception,
+        HasFcmToken $notifiable,
+        Notification|ShouldFcm $notification
+    ): void {
+        $context = $this->buildExceptionContext($notifiable, $notification);
+
+        match (true) {
+            $exception instanceof InvalidConfigurationException =>
+            Log::error('FCM configuration error: ' . $exception->getMessage(), $context),
+
+            $exception instanceof FirebaseAuthException =>
+            Log::error('FCM authentication failed: ' . $exception->getMessage(), $context),
+
+            $exception instanceof FcmSendException =>
+            Log::error(
+                'FCM send operation failed: ' . $exception->getMessage(),
+                $this->enrichFcmExceptionContext($context, $exception)
+            ),
+
+            default =>
+            Log::error('Unexpected FCM error occurred: ' . $exception->getMessage(), $context),
+        };
+
+        if (Config::get('fcm.queue.enabled', true)) {
+            $this->fail($exception);
+        } else {
+            throw $exception;
+        }
+    }
+
+    /**
+     * Build base context array for exception logging.
+     *
+     * @param HasFcmToken $notifiable The notifiable entity
+     * @param Notification $notification The notification
+     * @return array<string, mixed>
+     */
+    private function buildExceptionContext(HasFcmToken $notifiable, Notification $notification): array
     {
-        $context = [
+        return [
             'notifiable_type' => get_class($notifiable),
             'notifiable_id' => $notifiable->id ?? null,
             'notification' => get_class($notification),
         ];
-
-        match (true) {
-            $e instanceof InvalidConfigurationException => Log::error('FCM configuration error: ' . $e->getMessage(), $context),
-            $e instanceof FirebaseAuthException => Log::error('FCM authentication error: ' . $e->getMessage(), $context),
-            $e instanceof FcmSendException => Log::error('FCM send error: ' . $e->getMessage(), array_merge($context, [
-                'error_code' => $e->getErrorCode(),
-                'status_code' => $e->getStatusCode(),
-            ])),
-            default => Log::error('Unexpected FCM error: ' . $e->getMessage(), $context),
-        };
-
-        if (Config::get('fcm.queue.enabled', true)) {
-            $this->fail($e);
-        } else {
-            throw $e;
-        }
     }
 
     /**
-     * Log warning message.
+     * Enrich exception context with FCM-specific details.
+     *
+     * @param array<string, mixed> $context Base context
+     * @param FcmSendException $exception The FCM exception
+     * @return array<string, mixed>
      */
-    protected function logWarning(string $message, $notifiable, $notification = null): void
+    private function enrichFcmExceptionContext(array $context, FcmSendException $exception): array
     {
-        if (! Config::get('fcm.logging.enabled', true)) {
-            return;
-        }
-
-        Log::channel(Config::get('fcm.logging.channel', 'stack'))
-            ->warning($message, [
-                'notifiable_type' => get_class($notifiable),
-                'notifiable_id' => $notifiable->id ?? null,
-                'notification' => $notification ? get_class($notification) : null,
-            ]);
+        return array_merge($context, [
+            'error_code' => $exception->getErrorCode(),
+            'status_code' => $exception->getStatusCode(),
+        ]);
     }
 
     /**
-     * Log info message.
+     * Log a warning message if logging is enabled.
+     *
+     * @param string $message Warning message
+     * @param mixed $notifiable The notifiable entity
+     * @param Notification|null $notification Optional notification instance
+     * @return void
      */
-    protected function logInfo(string $message, $notifiable, array $extra = []): void
+    private function logWarning(string $message, $notifiable, ?Notification $notification = null): void
     {
-        if (! Config::get('fcm.logging.enabled', true)) {
+        if (!$this->isLoggingEnabled()) {
             return;
         }
 
-        Log::channel(Config::get('fcm.logging.channel', 'stack'))
-            ->info($message, array_merge([
-                'notifiable_type' => get_class($notifiable),
-                'notifiable_id' => $notifiable->id ?? null,
-            ], $extra));
+        Log::channel($this->getLogChannel())->warning($message, [
+            'notifiable_type' => get_class($notifiable),
+            'notifiable_id' => $notifiable->id ?? null,
+            'notification' => $notification ? get_class($notification) : null,
+        ]);
+    }
+
+    /**
+     * Log an info message if logging is enabled.
+     *
+     * @param string $message Info message
+     * @param HasFcmToken $notifiable The notifiable entity
+     * @param array<string, mixed> $extra Additional context data
+     * @return void
+     */
+    private function logInfo(string $message, HasFcmToken $notifiable, array $extra = []): void
+    {
+        if (!$this->isLoggingEnabled()) {
+            return;
+        }
+
+        Log::channel($this->getLogChannel())->info($message, array_merge([
+            'notifiable_type' => get_class($notifiable),
+            'notifiable_id' => $notifiable->id ?? null,
+        ], $extra));
+    }
+
+    /**
+     * Check if logging is enabled in configuration.
+     *
+     * @return bool
+     */
+    private function isLoggingEnabled(): bool
+    {
+        return (bool) Config::get('fcm.logging.enabled', true);
+    }
+
+    /**
+     * Get the configured logging channel.
+     *
+     * @return string
+     */
+    private function getLogChannel(): string
+    {
+        return Config::get('fcm.logging.channel', 'stack');
     }
 }
