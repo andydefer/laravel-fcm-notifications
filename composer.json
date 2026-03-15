@@ -19,7 +19,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Andydefer\\FcmNotifications\\Providers\\FcmNotificationServiceProvider"
+                "Andydefer\\FcmNotifications\\FcmNotificationServiceProvider"
             ]
         }
     },
