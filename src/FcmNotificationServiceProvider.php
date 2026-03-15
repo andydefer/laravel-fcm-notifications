@@ -53,23 +53,28 @@ class FcmNotificationServiceProvider extends ServiceProvider
     protected function registerPublishing(): void
     {
         if ($this->app->runningInConsole()) {
-            // ✅ Chemin corrigé pour la publication
+            // Publier la configuration
             $this->publishes([
                 __DIR__ . '/../config/fcm.php' => config_path('fcm.php'),
             ], 'fcm-config');
 
-            $this->publishes([
-                __DIR__ . '/../database/migrations/create_fcm_tokens_table.php' => database_path(
-                    'migrations/' . date('Y_m_d_His', time()) . '_create_fcm_tokens_table.php'
-                ),
-            ], 'fcm-migrations');
+            // ✅ Version dynamique qui trouve le fichier de migration
+            $migrationFile = glob(__DIR__ . '/../database/migrations/*_create_fcm_tokens_table.php')[0] ?? null;
 
+            if ($migrationFile) {
+                $this->publishes([
+                    $migrationFile => database_path(
+                        'migrations/' . date('Y_m_d_His', time()) . '_create_fcm_tokens_table.php'
+                    ),
+                ], 'fcm-migrations');
+            }
+
+            // Publier les traductions
             $this->publishes([
                 __DIR__ . '/../resources/lang' => $this->app->langPath('vendor/fcm'),
             ], 'fcm-translations');
         }
     }
-
     /**
      * Register the package's commands.
      */
