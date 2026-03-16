@@ -28,7 +28,7 @@
     "name": "andydefer/laravel-fcm-notifications",
     "prefer-stable": true,
     "require": {
-        "andydefer/push-notifier": "^0.1.2",
+        "andydefer/push-notifier": "^1.0.0",
         "illuminate/database": "^10.0|^11.0|^12.0",
         "illuminate/notifications": "^10.0|^11.0|^12.0",
         "illuminate/support": "^10.0|^11.0|^12.0",

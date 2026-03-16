@@ -55,7 +55,6 @@ class TestFcmNotification extends Notification implements ShouldFcm
         return FcmMessageData::info(
             title: $this->title,
             body: $this->body,
-            data: $this->data
         );
     }
 }
