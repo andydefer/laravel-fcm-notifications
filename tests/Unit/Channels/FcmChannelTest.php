@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Andydefer\FcmNotifications\Tests\Unit\Channels;
 
 use Andydefer\FcmNotifications\Channels\FcmChannel;
+use Andydefer\FcmNotifications\Contracts\HasFcmToken;
+use Andydefer\FcmNotifications\Exceptions\InvalidCredentialsException;
 use Andydefer\FcmNotifications\Tests\Fixtures\InvalidTestNotification;
 use Andydefer\FcmNotifications\Tests\Fixtures\TestFcmNotification;
 use Andydefer\FcmNotifications\Tests\TestCase;
@@ -21,6 +23,7 @@ use stdClass;
  * Unit tests for the FCM notification channel.
  *
  * This test suite verifies the behavior of the FcmChannel class:
+ * - Credentials validation during construction
  * - Sending notifications to single and multiple tokens
  * - Token invalidation logic
  * - Validation of notifiable and notification contracts
@@ -31,9 +34,33 @@ use stdClass;
  */
 class FcmChannelTest extends TestCase
 {
+    /**
+     * Mock instance of NotificationFactory.
+     *
+     * @var NotificationFactory&MockInterface
+     */
     private NotificationFactory&MockInterface $notificationFactoryMock;
+
+    /**
+     * Mock instance of FirebaseService.
+     *
+     * @var FirebaseService&MockInterface
+     */
     private FirebaseService&MockInterface $firebaseServiceMock;
+
+    /**
+     * Instance of FcmChannel being tested.
+     *
+     * @var FcmChannel
+     */
     private FcmChannel $fcmChannel;
+
+    /**
+     * Temporary file path for credentials.
+     *
+     * @var string|null
+     */
+    private ?string $tempCredentialsFile = null;
 
     /**
      * Set up the test environment before each test.
@@ -49,7 +76,194 @@ class FcmChannelTest extends TestCase
 
         $this->mockDependencies();
         $this->configureFactoryToReturnMockedFirebaseService();
-        $this->createFcmChannel();
+        $this->createFcmChannelWithValidCredentials();
+    }
+
+    /**
+     * Clean up after each test.
+     *
+     * Closes Mockery expectations and removes temporary files.
+     *
+     * @return void
+     */
+    protected function tearDown(): void
+    {
+        if ($this->tempCredentialsFile && file_exists($this->tempCredentialsFile)) {
+            unlink($this->tempCredentialsFile);
+        }
+
+        Mockery::close();
+        parent::tearDown();
+    }
+
+    /**
+     * Test that the channel throws exception when credentials are not configured.
+     *
+     * @return void
+     */
+    public function test_throws_exception_when_credentials_not_configured(): void
+    {
+        // Arrange: Set credentials to null in config
+        config(['fcm.credentials' => null]);
+
+        // Assert: Expect InvalidCredentialsException
+        $this->expectException(InvalidCredentialsException::class);
+        $this->expectExceptionMessage('FCM credentials path is not configured');
+
+        // Act: Attempt to create channel without credentials
+        new FcmChannel($this->notificationFactoryMock);
+    }
+
+    /**
+     * Test that the channel throws exception when credentials path is empty string.
+     *
+     * @return void
+     */
+    public function test_throws_exception_when_credentials_path_is_empty(): void
+    {
+        // Arrange: Set empty credentials path
+        config(['fcm.credentials' => '']);
+
+        // Assert: Expect InvalidCredentialsException
+        $this->expectException(InvalidCredentialsException::class);
+        $this->expectExceptionMessage('FCM credentials path is not configured');
+
+        // Act: Attempt to create channel with empty path
+        new FcmChannel($this->notificationFactoryMock);
+    }
+
+    /**
+     * Test that the channel throws exception when credentials file doesn't exist.
+     *
+     * @return void
+     */
+    public function test_throws_exception_when_credentials_file_not_found(): void
+    {
+        // Arrange: Set path to non-existent file
+        $nonExistentPath = '/path/to/nonexistent/file.json';
+        config(['fcm.credentials' => $nonExistentPath]);
+
+        // Assert: Expect InvalidCredentialsException
+        $this->expectException(InvalidCredentialsException::class);
+        $this->expectExceptionMessage('FCM credentials file not found at path: ' . $nonExistentPath);
+
+        // Act: Attempt to create channel with invalid file path
+        new FcmChannel($this->notificationFactoryMock);
+    }
+
+    /**
+     * Test that the channel throws exception when credentials file is not readable.
+     *
+     * @return void
+     */
+    public function test_throws_exception_when_credentials_file_not_readable(): void
+    {
+        // Arrange: Create a temporary file and make it unreadable
+        $tempFile = tempnam(sys_get_temp_dir(), 'fcm_test_');
+        chmod($tempFile, 0000); // Remove all permissions
+
+        config(['fcm.credentials' => $tempFile]);
+
+        // Assert: Expect InvalidCredentialsException
+        $this->expectException(InvalidCredentialsException::class);
+        $this->expectExceptionMessage('FCM credentials file is not readable at: ' . $tempFile);
+
+        try {
+            // Act: Attempt to create channel with unreadable file
+            new FcmChannel($this->notificationFactoryMock);
+        } finally {
+            // Clean up
+            chmod($tempFile, 0666);
+            unlink($tempFile);
+        }
+    }
+
+    /**
+     * Test that the channel throws exception when credentials file contains invalid JSON.
+     *
+     * @return void
+     */
+    public function test_throws_exception_when_credentials_file_contains_invalid_json(): void
+    {
+        // Arrange: Create a temporary file with invalid JSON
+        $tempFile = tempnam(sys_get_temp_dir(), 'fcm_test_');
+        file_put_contents($tempFile, '{invalid json}');
+
+        config(['fcm.credentials' => $tempFile]);
+
+        // Assert: Expect InvalidCredentialsException
+        $this->expectException(InvalidCredentialsException::class);
+        $this->expectExceptionMessage('FCM credentials file contains invalid JSON');
+
+        try {
+            // Act: Attempt to create channel with invalid JSON
+            new FcmChannel($this->notificationFactoryMock);
+        } finally {
+            // Clean up
+            unlink($tempFile);
+        }
+    }
+
+    /**
+     * Test that the channel accepts valid credentials file.
+     *
+     * @return void
+     */
+    public function test_accepts_valid_credentials_file(): void
+    {
+        // Arrange: Create a temporary file with valid JSON
+        $tempFile = tempnam(sys_get_temp_dir(), 'fcm_test_');
+        $validJson = json_encode([
+            'type' => 'service_account',
+            'project_id' => 'test-project',
+            'private_key_id' => '12345',
+            'private_key' => '-----BEGIN PRIVATE KEY-----\nMIIEv...\n-----END PRIVATE KEY-----\n',
+            'client_email' => 'test@test.iam.gserviceaccount.com',
+            'client_id' => '123456',
+            'auth_uri' => 'https://accounts.google.com/o/oauth2/auth',
+            'token_uri' => 'https://oauth2.googleapis.com/token',
+        ]);
+        file_put_contents($tempFile, $validJson);
+
+        config(['fcm.credentials' => $tempFile]);
+
+        try {
+            // Act: Create channel with valid credentials
+            $channel = new FcmChannel($this->notificationFactoryMock);
+
+            // Assert: Channel created successfully
+            $this->assertInstanceOf(FcmChannel::class, $channel);
+        } finally {
+            // Clean up
+            unlink($tempFile);
+        }
+    }
+
+    /**
+     * Test that the channel accepts credentials path passed directly to constructor.
+     *
+     * @return void
+     */
+    public function test_accepts_credentials_path_directly_in_constructor(): void
+    {
+        // Arrange: Create a temporary file with valid JSON
+        $tempFile = tempnam(sys_get_temp_dir(), 'fcm_test_');
+        $validJson = json_encode(['test' => 'data']);
+        file_put_contents($tempFile, $validJson);
+
+        try {
+            // Act: Create channel by passing path directly
+            $channel = new FcmChannel(
+                notificationFactory: $this->notificationFactoryMock,
+                credentialsPath: $tempFile
+            );
+
+            // Assert: Channel created successfully
+            $this->assertInstanceOf(FcmChannel::class, $channel);
+        } finally {
+            // Clean up
+            unlink($tempFile);
+        }
     }
 
     /**
@@ -61,7 +275,7 @@ class FcmChannelTest extends TestCase
     {
         // Arrange: Create a notifiable with one token and configure the Firebase mock
         $token = 'single-device-token-123';
-        $notifiable = $this->createTestNotifiable([$token]);
+        $notifiable = $this->createMockNotifiableWithTokens([$token]);
         $notification = new TestFcmNotification('Test Title', 'Test Body');
 
         $this->expectFirebaseSendToBeCalledOnce($token);
@@ -82,7 +296,7 @@ class FcmChannelTest extends TestCase
     {
         // Arrange: Create a notifiable with multiple tokens
         $tokens = ['device-token-1', 'device-token-2', 'device-token-3'];
-        $notifiable = $this->createTestNotifiable($tokens);
+        $notifiable = $this->createMockNotifiableWithTokens($tokens);
         $notification = new TestFcmNotification('Broadcast Title', 'Broadcast Body');
 
         $this->expectFirebaseMulticastToBeCalledWithAllTokens($tokens);
@@ -106,7 +320,7 @@ class FcmChannelTest extends TestCase
         $invalidToken = 'expired-device-token';
         $tokens = [$validToken, $invalidToken];
 
-        $notifiable = $this->createTestNotifiable($tokens);
+        $notifiable = $this->createMockNotifiableWithTokens($tokens);
         $notification = new TestFcmNotification('Test', 'Message');
 
         $this->expectFirebaseMulticastToReturnOneValidAndOneInvalidResponse($tokens);
@@ -118,7 +332,6 @@ class FcmChannelTest extends TestCase
         $this->assertCount(1, $notifiable->getFcmTokens());
         $this->assertContains($validToken, $notifiable->getFcmTokens());
         $this->assertNotContains($invalidToken, $notifiable->getFcmTokens());
-        $this->assertContains($invalidToken, $notifiable->getInvalidatedTokens());
     }
 
     /**
@@ -129,7 +342,7 @@ class FcmChannelTest extends TestCase
     public function test_does_nothing_when_notifiable_has_no_tokens(): void
     {
         // Arrange: Create a notifiable with an empty token list
-        $notifiable = $this->createTestNotifiable([]);
+        $notifiable = $this->createMockNotifiableWithTokens([]);
         $notification = new TestFcmNotification('Title', 'Body');
 
         $this->expectNoFirebaseCalls();
@@ -169,7 +382,7 @@ class FcmChannelTest extends TestCase
     public function test_logs_warning_when_notification_does_not_implement_should_fcm(): void
     {
         // Arrange: Use a valid notifiable but invalid notification
-        $notifiable = $this->createTestNotifiable(['valid-token']);
+        $notifiable = $this->createMockNotifiableWithTokens(['valid-token']);
         $invalidNotification = new InvalidTestNotification();
 
         $this->expectNoFirebaseCalls();
@@ -191,7 +404,7 @@ class FcmChannelTest extends TestCase
         // Arrange: Configure queue to be disabled
         config(['fcm.queue.enabled' => false]);
 
-        $notifiable = $this->createTestNotifiable(['token-1']);
+        $notifiable = $this->createMockNotifiableWithTokens(['token-1']);
         $notification = new TestFcmNotification();
 
         $this->expectFirebaseSendToThrowException();
@@ -214,7 +427,7 @@ class FcmChannelTest extends TestCase
         // Arrange: Configure queue to be enabled
         config(['fcm.queue.enabled' => true]);
 
-        $notifiable = $this->createTestNotifiable(['token-1']);
+        $notifiable = $this->createMockNotifiableWithTokens(['token-1']);
         $notification = new TestFcmNotification();
 
         $this->expectFirebaseSendToThrowException();
@@ -250,15 +463,62 @@ class FcmChannelTest extends TestCase
     }
 
     /**
-     * Create the FCM channel instance with mocked dependencies.
+     * Create the FCM channel instance with valid credentials for testing.
+     *
+     * Creates a temporary valid credentials file to satisfy the constructor validation.
      *
      * @return void
      */
-    private function createFcmChannel(): void
+    private function createFcmChannelWithValidCredentials(): void
     {
+        // Create a temporary valid credentials file
+        $this->tempCredentialsFile = tempnam(sys_get_temp_dir(), 'fcm_test_');
+        $validJson = json_encode(['test' => 'data']);
+        file_put_contents($this->tempCredentialsFile, $validJson);
+
+        config(['fcm.credentials' => $this->tempCredentialsFile]);
+
         $this->fcmChannel = new FcmChannel(
             notificationFactory: $this->notificationFactoryMock
         );
+    }
+
+    /**
+     * Create a mock notifiable instance with the given tokens.
+     *
+     * @param array<string> $tokens Array of FCM tokens
+     * @return HasFcmToken&MockInterface
+     */
+    private function createMockNotifiableWithTokens(array $tokens): HasFcmToken&MockInterface
+    {
+        /** @var HasFcmToken&MockInterface $notifiable */
+        $notifiable = Mockery::mock(HasFcmToken::class);
+
+        // Store tokens for assertions
+        $currentTokens = $tokens;
+
+        $notifiable->shouldReceive('getFcmTokens')
+            ->andReturnUsing(function () use (&$currentTokens) {
+                return $currentTokens;
+            });
+
+        $notifiable->shouldReceive('invalidateFcmToken')
+            ->andReturnUsing(function ($token) use (&$currentTokens) {
+                $currentTokens = array_values(array_diff($currentTokens, [$token]));
+                return true;
+            });
+
+        $notifiable->shouldReceive('hasFcmTokens')
+            ->andReturnUsing(function () use (&$currentTokens) {
+                return !empty($currentTokens);
+            });
+
+        $notifiable->shouldReceive('getPrimaryFcmToken')
+            ->andReturnUsing(function () use (&$currentTokens) {
+                return $currentTokens[0] ?? null;
+            });
+
+        return $notifiable;
     }
 
     /**

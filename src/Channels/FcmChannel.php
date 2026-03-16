@@ -6,6 +6,7 @@ namespace Andydefer\FcmNotifications\Channels;
 
 use Andydefer\FcmNotifications\Contracts\HasFcmToken;
 use Andydefer\FcmNotifications\Contracts\ShouldFcm;
+use Andydefer\FcmNotifications\Exceptions\InvalidCredentialsException;
 use Andydefer\PushNotifier\Core\NotificationFactory;
 use Andydefer\PushNotifier\Dtos\FcmMessageData;
 use Andydefer\PushNotifier\Exceptions\FcmSendException;
@@ -23,7 +24,17 @@ use Exception;
  *
  * This channel handles sending push notifications to both single and multiple devices
  * using FCM. It supports token validation, automatic invalidation of expired tokens,
- * and comprehensive logging for debugging and monitoring purposes.
+ * and comprehensive logging for debugging and monitoring purposes. The channel validates
+ * credentials during construction to ensure proper configuration before any notifications
+ * are sent.
+ *
+ * Features:
+ * - Single device and multicast notifications
+ * - Automatic token invalidation for unregistered tokens
+ * - Queue support for async processing
+ * - Comprehensive logging
+ * - Credentials validation
+ * - Exception handling with configurable rethrow behavior
  *
  * @package Andydefer\FcmNotifications\Channels
  */
@@ -31,21 +42,93 @@ class FcmChannel implements ShouldQueue
 {
     use InteractsWithQueue;
 
+    /**
+     * Factory for creating Firebase services.
+     *
+     * @var NotificationFactory
+     */
     private NotificationFactory $notificationFactory;
+
+    /**
+     * Path to the Firebase credentials JSON file.
+     *
+     * @var string
+     */
     private string $credentialsPath;
 
     /**
      * Create a new FCM channel instance.
      *
+     * Validates the credentials path during construction to ensure
+     * the channel is properly configured before any notifications are sent.
+     *
      * @param NotificationFactory|null $notificationFactory Factory for creating Firebase services
      * @param string|null $credentialsPath Path to the Firebase credentials JSON file
+     * @throws InvalidCredentialsException If credentials are not properly configured
      */
     public function __construct(
         ?NotificationFactory $notificationFactory = null,
         ?string $credentialsPath = null
     ) {
         $this->notificationFactory = $notificationFactory ?? new NotificationFactory();
-        $this->credentialsPath = $credentialsPath ?? Config::get('fcm.credentials');
+
+        // Resolve credentials path from constructor argument or config
+        $resolvedPath = $credentialsPath ?? Config::get('fcm.credentials');
+
+        // Validate credentials configuration
+        $this->validateCredentials($resolvedPath);
+
+        $this->credentialsPath = $resolvedPath;
+    }
+
+    /**
+     * Validate the credentials path.
+     *
+     * Performs comprehensive validation of the credentials path:
+     * - Checks if path is null or empty
+     * - Verifies path is a string
+     * - Confirms file exists
+     * - Ensures file is readable
+     * - Validates JSON content
+     *
+     * @param mixed $path The path to validate
+     * @return void
+     * @throws InvalidCredentialsException If credentials are invalid
+     */
+    private function validateCredentials(mixed $path): void
+    {
+        // Check if path is null or empty
+        if ($path === null || $path === '') {
+            throw InvalidCredentialsException::missingConfiguration();
+        }
+
+        // Ensure it's a string
+        if (!is_string($path)) {
+            throw InvalidCredentialsException::invalidPathType(gettype($path));
+        }
+
+        // Check if file exists
+        if (!file_exists($path)) {
+            throw InvalidCredentialsException::fileNotFound($path);
+        }
+
+        // Check if file is readable
+        if (!is_readable($path)) {
+            throw InvalidCredentialsException::unreadableFile($path);
+        }
+
+        // Validate JSON content
+        $content = file_get_contents($path);
+        if ($content === false) {
+            throw new InvalidCredentialsException(
+                sprintf('Unable to read FCM credentials file at: %s', $path)
+            );
+        }
+
+        json_decode($content);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw InvalidCredentialsException::invalidJson($path, json_last_error_msg());
+        }
     }
 
     /**
