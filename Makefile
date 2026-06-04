@@ -403,11 +403,9 @@ lint-all-md:
 lint-all-fix-md:
 	@echo "📦 Running all code fixers and saving reports..."
 	@make lint-php-fix-md
-	@make lint-rector-md
 	@echo "✅ All code fixer reports generated"
 	@echo "📋 Reports:"
 	@echo "  - pint-test.md (Pint formatting test)"
-	@echo "  - rector.md (Rector refactoring)"
 
 # ---------------------------------------------------
 # Release Management Workflow
