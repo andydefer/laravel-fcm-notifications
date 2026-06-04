@@ -233,7 +233,6 @@ class FcmChannel implements ShouldQueue
         }
 
         $this->logInfo('FCM notification sent successfully', $notifiable, [
-            'token' => $token,
             'message_id' => $response->messageId,
         ]);
     }
