@@ -43,7 +43,6 @@ toggle-prompts: ## Toggle prompts in .gitignore
 
 .PHONY: git-commit-push
 git-commit-push: pre-commit ## Commit and push all changes with confirmation
-	@make toggle-prompts
 	@read -p "Enter commit message: " commit_message; \
 	if [ -z "$$commit_message" ]; then \
 		echo "❌ Error: Commit message cannot be empty"; \
@@ -52,7 +51,6 @@ git-commit-push: pre-commit ## Commit and push all changes with confirmation
 	git add .; \
 	git commit -m "$$commit_message"; \
 	git push
-	@make toggle-prompts
 
 git-reset-hard: ## Réinitialise complètement le repo au dernier commit (⚠️ destructif)
 	@echo "⚠️ Va supprimer tous les changements non commités !"
