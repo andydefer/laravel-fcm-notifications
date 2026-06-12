@@ -29,36 +29,26 @@ use stdClass;
  * - Validation of notifiable and notification contracts
  * - Exception handling and queue configuration
  * - Logging behavior
- *
- * @package Andydefer\FcmNotifications\Tests\Unit\Channels
  */
 class FcmChannelTest extends TestCase
 {
     /**
      * Mock instance of NotificationFactory.
-     *
-     * @var NotificationFactory&MockInterface
      */
     private NotificationFactory&MockInterface $notificationFactoryMock;
 
     /**
      * Mock instance of FirebaseService.
-     *
-     * @var FirebaseService&MockInterface
      */
     private FirebaseService&MockInterface $firebaseServiceMock;
 
     /**
      * Instance of FcmChannel being tested.
-     *
-     * @var FcmChannel
      */
     private FcmChannel $fcmChannel;
 
     /**
      * Temporary file path for credentials.
-     *
-     * @var string|null
      */
     private ?string $tempCredentialsFile = null;
 
@@ -67,8 +57,6 @@ class FcmChannelTest extends TestCase
      *
      * Creates mock instances for the NotificationFactory and FirebaseService,
      * and configures the factory to return the mocked Firebase service.
-     *
-     * @return void
      */
     protected function setUp(): void
     {
@@ -83,8 +71,6 @@ class FcmChannelTest extends TestCase
      * Clean up after each test.
      *
      * Closes Mockery expectations and removes temporary files.
-     *
-     * @return void
      */
     protected function tearDown(): void
     {
@@ -98,8 +84,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exception when credentials are not configured.
-     *
-     * @return void
      */
     public function test_throws_exception_when_credentials_not_configured(): void
     {
@@ -116,8 +100,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exception when credentials path is empty string.
-     *
-     * @return void
      */
     public function test_throws_exception_when_credentials_path_is_empty(): void
     {
@@ -134,8 +116,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exception when credentials file doesn't exist.
-     *
-     * @return void
      */
     public function test_throws_exception_when_credentials_file_not_found(): void
     {
@@ -145,7 +125,7 @@ class FcmChannelTest extends TestCase
 
         // Assert: Expect InvalidCredentialsException
         $this->expectException(InvalidCredentialsException::class);
-        $this->expectExceptionMessage('FCM credentials file not found at path: ' . $nonExistentPath);
+        $this->expectExceptionMessage('FCM credentials file not found at path: '.$nonExistentPath);
 
         // Act: Attempt to create channel with invalid file path
         new FcmChannel($this->notificationFactoryMock);
@@ -153,8 +133,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exception when credentials file is not readable.
-     *
-     * @return void
      */
     public function test_throws_exception_when_credentials_file_not_readable(): void
     {
@@ -166,7 +144,7 @@ class FcmChannelTest extends TestCase
 
         // Assert: Expect InvalidCredentialsException
         $this->expectException(InvalidCredentialsException::class);
-        $this->expectExceptionMessage('FCM credentials file is not readable at: ' . $tempFile);
+        $this->expectExceptionMessage('FCM credentials file is not readable at: '.$tempFile);
 
         try {
             // Act: Attempt to create channel with unreadable file
@@ -180,8 +158,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exception when credentials file contains invalid JSON.
-     *
-     * @return void
      */
     public function test_throws_exception_when_credentials_file_contains_invalid_json(): void
     {
@@ -206,8 +182,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel accepts valid credentials file.
-     *
-     * @return void
      */
     public function test_accepts_valid_credentials_file(): void
     {
@@ -241,8 +215,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel accepts credentials path passed directly to constructor.
-     *
-     * @return void
      */
     public function test_accepts_credentials_path_directly_in_constructor(): void
     {
@@ -268,8 +240,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel successfully sends a notification to a single token.
-     *
-     * @return void
      */
     public function test_sends_notification_to_single_token(): void
     {
@@ -289,8 +259,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel successfully sends a notification to multiple tokens.
-     *
-     * @return void
      */
     public function test_sends_notification_to_multiple_tokens(): void
     {
@@ -310,8 +278,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel automatically invalidates tokens when FCM reports them as invalid.
-     *
-     * @return void
      */
     public function test_invalidates_tokens_when_fcm_reports_invalid(): void
     {
@@ -336,8 +302,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel does nothing when the notifiable has no FCM tokens.
-     *
-     * @return void
      */
     public function test_does_nothing_when_notifiable_has_no_tokens(): void
     {
@@ -356,14 +320,12 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel logs a warning when the notifiable doesn't implement HasFcmToken.
-     *
-     * @return void
      */
     public function test_logs_warning_when_notifiable_does_not_implement_contract(): void
     {
         // Arrange: Use a plain stdClass as notifiable (invalid)
-        $invalidNotifiable = new stdClass();
-        $notification = new TestFcmNotification();
+        $invalidNotifiable = new stdClass;
+        $notification = new TestFcmNotification;
 
         $this->expectNoFirebaseCalls();
 
@@ -376,14 +338,12 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel logs a warning when the notification doesn't implement ShouldFcm.
-     *
-     * @return void
      */
     public function test_logs_warning_when_notification_does_not_implement_should_fcm(): void
     {
         // Arrange: Use a valid notifiable but invalid notification
         $notifiable = $this->createMockNotifiableWithTokens(['valid-token']);
-        $invalidNotification = new InvalidTestNotification();
+        $invalidNotification = new InvalidTestNotification;
 
         $this->expectNoFirebaseCalls();
 
@@ -396,8 +356,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel throws exceptions when queue is disabled.
-     *
-     * @return void
      */
     public function test_throws_exception_when_queue_disabled_and_error_occurs(): void
     {
@@ -405,7 +363,7 @@ class FcmChannelTest extends TestCase
         config(['fcm.queue.enabled' => false]);
 
         $notifiable = $this->createMockNotifiableWithTokens(['token-1']);
-        $notification = new TestFcmNotification();
+        $notification = new TestFcmNotification;
 
         $this->expectFirebaseSendToThrowException();
 
@@ -419,8 +377,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Test that the channel fails silently when queue is enabled and error occurs.
-     *
-     * @return void
      */
     public function test_fails_silently_when_queue_enabled_and_error_occurs(): void
     {
@@ -428,7 +384,7 @@ class FcmChannelTest extends TestCase
         config(['fcm.queue.enabled' => true]);
 
         $notifiable = $this->createMockNotifiableWithTokens(['token-1']);
-        $notification = new TestFcmNotification();
+        $notification = new TestFcmNotification;
 
         $this->expectFirebaseSendToThrowException();
 
@@ -441,8 +397,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Mock all required dependencies for testing.
-     *
-     * @return void
      */
     private function mockDependencies(): void
     {
@@ -452,8 +406,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Configure the factory mock to return the mocked Firebase service.
-     *
-     * @return void
      */
     private function configureFactoryToReturnMockedFirebaseService(): void
     {
@@ -466,8 +418,6 @@ class FcmChannelTest extends TestCase
      * Create the FCM channel instance with valid credentials for testing.
      *
      * Creates a temporary valid credentials file to satisfy the constructor validation.
-     *
-     * @return void
      */
     private function createFcmChannelWithValidCredentials(): void
     {
@@ -486,8 +436,7 @@ class FcmChannelTest extends TestCase
     /**
      * Create a mock notifiable instance with the given tokens.
      *
-     * @param array<string> $tokens Array of FCM tokens
-     * @return HasFcmToken&MockInterface
+     * @param  array<string>  $tokens  Array of FCM tokens
      */
     private function createMockNotifiableWithTokens(array $tokens): HasFcmToken&MockInterface
     {
@@ -505,12 +454,13 @@ class FcmChannelTest extends TestCase
         $notifiable->shouldReceive('invalidateFcmToken')
             ->andReturnUsing(function ($token) use (&$currentTokens) {
                 $currentTokens = array_values(array_diff($currentTokens, [$token]));
+
                 return true;
             });
 
         $notifiable->shouldReceive('hasFcmTokens')
             ->andReturnUsing(function () use (&$currentTokens) {
-                return !empty($currentTokens);
+                return ! empty($currentTokens);
             });
 
         $notifiable->shouldReceive('getPrimaryFcmToken')
@@ -524,8 +474,7 @@ class FcmChannelTest extends TestCase
     /**
      * Expect that the Firebase send method is called once with the given token.
      *
-     * @param string $expectedToken The token expected to be used
-     * @return void
+     * @param  string  $expectedToken  The token expected to be used
      */
     private function expectFirebaseSendToBeCalledOnce(string $expectedToken): void
     {
@@ -539,8 +488,7 @@ class FcmChannelTest extends TestCase
     /**
      * Expect that the Firebase multicast method is called with all tokens.
      *
-     * @param array<string> $expectedTokens The tokens expected to be used
-     * @return void
+     * @param  array<string>  $expectedTokens  The tokens expected to be used
      */
     private function expectFirebaseMulticastToBeCalledWithAllTokens(array $expectedTokens): void
     {
@@ -554,8 +502,7 @@ class FcmChannelTest extends TestCase
     /**
      * Expect that the Firebase multicast method returns mixed valid/invalid responses.
      *
-     * @param array<string> $tokens The tokens being sent to
-     * @return void
+     * @param  array<string>  $tokens  The tokens being sent to
      */
     private function expectFirebaseMulticastToReturnOneValidAndOneInvalidResponse(array $tokens): void
     {
@@ -568,8 +515,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Expect that no Firebase service calls are made.
-     *
-     * @return void
      */
     private function expectNoFirebaseCalls(): void
     {
@@ -579,8 +524,6 @@ class FcmChannelTest extends TestCase
 
     /**
      * Expect that the Firebase send method throws an exception.
-     *
-     * @return void
      */
     private function expectFirebaseSendToThrowException(): void
     {
@@ -592,13 +535,11 @@ class FcmChannelTest extends TestCase
 
     /**
      * Create a successful FCM response.
-     *
-     * @return FcmResponseData
      */
     private function createSuccessfulResponse(): FcmResponseData
     {
         return new FcmResponseData(
-            messageId: 'msg-' . uniqid(),
+            messageId: 'msg-'.uniqid(),
             name: 'projects/test/messages/success',
             rawResponse: [],
             success: true
@@ -608,7 +549,7 @@ class FcmChannelTest extends TestCase
     /**
      * Create successful responses for all tokens.
      *
-     * @param array<string> $tokens
+     * @param  array<string>  $tokens
      * @return array<string, FcmResponseData>
      */
     private function createSuccessfulMulticastResponses(array $tokens): array
@@ -617,13 +558,14 @@ class FcmChannelTest extends TestCase
         foreach ($tokens as $token) {
             $responses[$token] = $this->createSuccessfulResponse();
         }
+
         return $responses;
     }
 
     /**
      * Create mixed responses with one valid and one invalid.
      *
-     * @param array<string> $tokens
+     * @param  array<string>  $tokens
      * @return array<string, FcmResponseData>
      */
     private function createMixedMulticastResponses(array $tokens): array

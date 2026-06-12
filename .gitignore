@@ -2,6 +2,9 @@
 
 # Laravel / PHP standard
 /vendor/
+/prompts/
+/docs/diffs/
+
 .env
 .env.*.backup
 .phpunit.result.cache

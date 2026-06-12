@@ -6,8 +6,8 @@ namespace Andydefer\FcmNotifications\Tests\Unit\Console\Commands;
 
 use Andydefer\FcmNotifications\Models\FcmToken;
 use Andydefer\FcmNotifications\Tests\TestCase;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 
 /**
  * Unit tests for the CleanExpiredTokensCommand.
@@ -17,8 +17,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * - Respecting custom days threshold from command options
  * - Dry-run mode that shows preview without making changes
  * - Handling scenarios with no expired tokens
- *
- * @package Andydefer\FcmNotifications\Tests\Unit\Console\Commands
  */
 class CleanExpiredTokensCommandTest extends TestCase
 {
@@ -29,8 +27,6 @@ class CleanExpiredTokensCommandTest extends TestCase
      *
      * This test verifies that tokens not used within the configured inactivity
      * period are properly invalidated, while recently used tokens remain valid.
-     *
-     * @return void
      */
     public function test_invalidates_tokens_not_used_within_configured_period(): void
     {
@@ -68,8 +64,6 @@ class CleanExpiredTokensCommandTest extends TestCase
      *
      * This test verifies that when a custom inactivity period is provided via
      * the command line, it overrides the configuration value.
-     *
-     * @return void
      */
     public function test_uses_custom_inactivity_period_from_command_option(): void
     {
@@ -103,8 +97,6 @@ class CleanExpiredTokensCommandTest extends TestCase
      * This test verifies that when the --dry-run option is used, the command
      * reports which tokens would be invalidated but leaves them valid in the
      * database.
-     *
-     * @return void
      */
     public function test_dry_run_mode_previews_changes_without_persisting_them(): void
     {
@@ -136,8 +128,6 @@ class CleanExpiredTokensCommandTest extends TestCase
      *
      * This test verifies that when all tokens are within the inactivity period,
      * the command reports zero invalidations and makes no changes.
-     *
-     * @return void
      */
     public function test_reports_zero_invalidations_when_no_tokens_are_expired(): void
     {

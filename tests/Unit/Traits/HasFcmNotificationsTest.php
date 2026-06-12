@@ -15,8 +15,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * This test suite verifies all functionality provided by the HasFcmNotifications trait
  * including token registration, validation, invalidation, primary token management,
  * and integration with Laravel's notification system.
- *
- * @package Andydefer\FcmNotifications\Tests\Unit\Traits
  */
 class HasFcmNotificationsTest extends TestCase
 {
@@ -24,8 +22,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that a new FCM token can be registered with metadata.
-     *
-     * @return void
      */
     public function test_can_register_fcm_token_with_metadata(): void
     {
@@ -53,8 +49,6 @@ class HasFcmNotificationsTest extends TestCase
      *
      * When the limit is reached, the oldest token (by last_used_at) should be
      * automatically removed to make room for the new token.
-     *
-     * @return void
      */
     public function test_enforces_token_limit_with_lru_eviction(): void
     {
@@ -83,8 +77,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that the most recent token is automatically considered primary.
-     *
-     * @return void
      */
     public function test_most_recent_token_is_primary(): void
     {
@@ -104,8 +96,6 @@ class HasFcmNotificationsTest extends TestCase
     /**
      * Test that the isPrimary parameter in registerFcmToken is ignored
      * (maintained for backward compatibility).
-     *
-     * @return void
      */
     public function test_is_primary_parameter_is_ignored_for_backward_compatibility(): void
     {
@@ -123,8 +113,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that registering an existing token updates its metadata.
-     *
-     * @return void
      */
     public function test_updates_existing_token_metadata_when_re_registered(): void
     {
@@ -149,8 +137,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test retrieving all active FCM tokens as an array.
-     *
-     * @return void
      */
     public function test_returns_all_active_tokens_as_array(): void
     {
@@ -171,8 +157,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test retrieving the primary FCM token (most recent).
-     *
-     * @return void
      */
     public function test_returns_most_recent_token_as_primary(): void
     {
@@ -193,8 +177,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that hasFcmTokens returns true when tokens exist.
-     *
-     * @return void
      */
     public function test_detects_presence_of_tokens(): void
     {
@@ -208,8 +190,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that hasFcmTokens returns false when no tokens exist.
-     *
-     * @return void
      */
     public function test_detects_absence_of_tokens(): void
     {
@@ -222,8 +202,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that a specific token can be invalidated.
-     *
-     * @return void
      */
     public function test_can_invalidate_specific_token(): void
     {
@@ -247,8 +225,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that all tokens can be invalidated at once.
-     *
-     * @return void
      */
     public function test_can_invalidate_all_tokens(): void
     {
@@ -274,8 +250,6 @@ class HasFcmNotificationsTest extends TestCase
      *
      * This method is used by Laravel's notification system to determine
      * where to send FCM notifications.
-     *
-     * @return void
      */
     public function test_provides_tokens_for_notification_routing(): void
     {
@@ -295,8 +269,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that tokens are cascade deleted when the owning user is deleted.
-     *
-     * @return void
      */
     public function test_tokens_are_cascade_deleted_with_user(): void
     {
@@ -319,8 +291,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that primary token updates to the next most recent when current is invalidated.
-     *
-     * @return void
      */
     public function test_primary_token_updates_to_next_most_recent_when_invalidated(): void
     {
@@ -344,8 +314,6 @@ class HasFcmNotificationsTest extends TestCase
 
     /**
      * Test that primary token returns null when all tokens are invalid.
-     *
-     * @return void
      */
     public function test_primary_token_is_null_when_all_tokens_invalid(): void
     {

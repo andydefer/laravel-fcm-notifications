@@ -12,8 +12,6 @@ use Illuminate\Support\Facades\Schema;
  * This migration is only used during package development and testing phases.
  * It creates a simple users table that can be used to test FCM token relationships
  * and notification functionality without requiring the application's actual users table.
- *
- * @package Andydefer\FcmNotifications\Database\Migrations
  */
 return new class extends Migration
 {
@@ -28,8 +26,6 @@ return new class extends Migration
      * Creates the test_users table if it doesn't already exist.
      * The table includes basic fields needed for testing polymorphic relationships
      * with FCM tokens and notification delivery.
-     *
-     * @return void
      */
     public function up(): void
     {
@@ -44,8 +40,6 @@ return new class extends Migration
      * Reverse the migrations.
      *
      * Drops the test_users table if it exists.
-     *
-     * @return void
      */
     public function down(): void
     {
@@ -70,8 +64,6 @@ return new class extends Migration
      * - Name and email fields
      * - Email verification timestamp
      * - Standard timestamps
-     *
-     * @return void
      */
     private function createTestUsersTable(): void
     {

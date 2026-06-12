@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Andydefer\FcmNotifications\Tests\Fixtures;
 
+use Andydefer\FcmNotifications\Channels\FcmChannel;
+use Andydefer\FcmNotifications\Contracts\ShouldFcm;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -17,10 +19,9 @@ use Illuminate\Notifications\Notification;
  * The absence of the toFcm() method (required by ShouldFcm) will trigger
  * appropriate error handling in the FcmChannel when this notification is used.
  *
- * @package Andydefer\FcmNotifications\Tests\Fixtures
  *
- * @see \Andydefer\FcmNotifications\Channels\FcmChannel
- * @see \Andydefer\FcmNotifications\Contracts\ShouldFcm
+ * @see FcmChannel
+ * @see ShouldFcm
  */
 class InvalidTestNotification extends Notification
 {
@@ -31,7 +32,7 @@ class InvalidTestNotification extends Notification
      * without implementing the required ShouldFcm interface, making it useful
      * for testing validation logic.
      *
-     * @param mixed $notifiable The notifiable entity
+     * @param  mixed  $notifiable  The notifiable entity
      * @return array<int, string> The delivery channels
      */
     public function via($notifiable): array
@@ -46,6 +47,6 @@ class InvalidTestNotification extends Notification
      * that does not fulfill the ShouldFcm contract. The FcmChannel should
      * detect this and handle it appropriately.
      *
-     * @see \Andydefer\FcmNotifications\Contracts\ShouldFcm::toFcm()
+     * @see ShouldFcm::toFcm()
      */
 }

@@ -10,6 +10,7 @@ use Andydefer\FcmNotifications\Traits\HasFcmNotifications;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 
 /**
  * Test user model for FCM notification package testing.
@@ -21,11 +22,9 @@ use Illuminate\Notifications\Notifiable;
  * @property int $id
  * @property string $name
  * @property string $email
- * @property \Illuminate\Support\Carbon|null $email_verified_at
- * @property \Illuminate\Support\Carbon|null $created_at
- * @property \Illuminate\Support\Carbon|null $updated_at
- *
- * @package Andydefer\FcmNotifications\Tests\Fixtures
+ * @property Carbon|null $email_verified_at
+ * @property Carbon|null $created_at
+ * @property Carbon|null $updated_at
  */
 class TestUser extends Model implements HasFcmToken
 {
@@ -64,8 +63,6 @@ class TestUser extends Model implements HasFcmToken
      * This method defines the polymorphic relationship between the test user
      * and FCM tokens. It allows the HasFcmNotifications trait to manage
      * token operations through the standard Eloquent relationship.
-     *
-     * @return MorphMany
      */
     public function fcmTokens(): MorphMany
     {

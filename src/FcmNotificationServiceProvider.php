@@ -9,8 +9,8 @@ use Andydefer\FcmNotifications\Console\Commands\CleanExpiredTokensCommand;
 use Andydefer\FcmNotifications\Console\Commands\TestFcmConnectionCommand;
 use Andydefer\PushNotifier\Core\NotificationFactory;
 use Illuminate\Notifications\ChannelManager;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
 /**
@@ -19,8 +19,6 @@ use RuntimeException;
  * This service provider handles the registration and bootstrapping of all FCM
  * notification package components including configuration, migrations,
  * translations, console commands, and the notification channel itself.
- *
- * @package Andydefer\FcmNotifications
  */
 class FcmNotificationServiceProvider extends ServiceProvider
 {
@@ -46,8 +44,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
      * services in the container:
      * - NotificationFactory for creating Firebase services
      * - FcmChannel as a singleton for sending notifications
-     *
-     * @return void
      */
     public function register(): void
     {
@@ -65,8 +61,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
      * - Registers console commands
      * - Registers the FCM notification channel
      * - Loads translation files
-     *
-     * @return void
      */
     public function boot(): void
     {
@@ -78,8 +72,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Merge the package configuration with the application's configuration.
-     *
-     * @return void
      */
     private function mergePackageConfiguration(): void
     {
@@ -91,20 +83,16 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Register the NotificationFactory as a singleton in the container.
-     *
-     * @return void
      */
     private function registerNotificationFactory(): void
     {
         $this->app->singleton(NotificationFactory::class, function ($app) {
-            return new NotificationFactory();
+            return new NotificationFactory;
         });
     }
 
     /**
      * Register the FcmChannel as a singleton in the container.
-     *
-     * @return void
      */
     private function registerFcmChannel(): void
     {
@@ -118,12 +106,10 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Register all publishable resources for the package.
-     *
-     * @return void
      */
     private function registerPublishableResources(): void
     {
-        if (!$this->app->runningInConsole()) {
+        if (! $this->app->runningInConsole()) {
             return;
         }
 
@@ -134,8 +120,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Publish the package configuration file.
-     *
-     * @return void
      */
     private function publishesConfiguration(): void
     {
@@ -150,7 +134,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
     /**
      * Publish the package migration files.
      *
-     * @return void
      *
      * @throws RuntimeException If no migration file is found
      */
@@ -174,14 +157,12 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Publish the package translation files.
-     *
-     * @return void
      */
     private function publishesTranslations(): void
     {
         $this->publishes(
             paths: [
-                $this->getPackageLangPath() => $this->app->langPath('vendor/' . self::TRANSLATION_NAMESPACE),
+                $this->getPackageLangPath() => $this->app->langPath('vendor/'.self::TRANSLATION_NAMESPACE),
             ],
             groups: 'fcm-translations'
         );
@@ -189,8 +170,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Register the package's console commands.
-     *
-     * @return void
      */
     private function registerConsoleCommands(): void
     {
@@ -204,8 +183,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Register the FCM channel with Laravel's notification system.
-     *
-     * @return void
      */
     private function registerNotificationChannel(): void
     {
@@ -221,8 +198,6 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Load the package's translation files.
-     *
-     * @return void
      */
     private function loadTranslations(): void
     {
@@ -234,22 +209,18 @@ class FcmNotificationServiceProvider extends ServiceProvider
 
     /**
      * Get the path to the package configuration file.
-     *
-     * @return string
      */
     private function getPackageConfigPath(): string
     {
-        return __DIR__ . '/../config/' . self::CONFIG_FILE;
+        return __DIR__.'/../config/'.self::CONFIG_FILE;
     }
 
     /**
      * Get the path to the package language files.
-     *
-     * @return string
      */
     private function getPackageLangPath(): string
     {
-        return __DIR__ . '/../resources/lang';
+        return __DIR__.'/../resources/lang';
     }
 
     /**
@@ -259,15 +230,13 @@ class FcmNotificationServiceProvider extends ServiceProvider
      */
     private function discoverMigrationFile(): ?string
     {
-        $migrationFiles = glob(__DIR__ . '/../database/migrations/*_create_fcm_tokens_table.php');
+        $migrationFiles = glob(__DIR__.'/../database/migrations/*_create_fcm_tokens_table.php');
 
         return $migrationFiles[0] ?? null;
     }
 
     /**
      * Generate the destination path for the migration file.
-     *
-     * @return string
      */
     private function generateMigrationDestination(): string
     {

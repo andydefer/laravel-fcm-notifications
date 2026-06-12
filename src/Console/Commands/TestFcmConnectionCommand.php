@@ -9,10 +9,10 @@ use Andydefer\FcmNotifications\Contracts\HasFcmToken;
 use Andydefer\FcmNotifications\Contracts\ShouldFcm;
 use Andydefer\FcmNotifications\Models\FcmToken;
 use Andydefer\PushNotifier\Dtos\FcmMessageData;
+use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Notifications\Notification;
-use Exception;
 
 /**
  * Console command to test Firebase Cloud Messaging connectivity.
@@ -21,8 +21,6 @@ use Exception;
  * a test notification to a provided device token. It creates a temporary
  * notifiable object and notification class to simulate a real notification
  * flow without requiring existing database records.
- *
- * @package Andydefer\FcmNotifications\Console\Commands
  */
 class TestFcmConnectionCommand extends Command
 {
@@ -53,7 +51,7 @@ class TestFcmConnectionCommand extends Command
      * 4. Attempts to send the notification through the FCM channel
      * 5. Reports success or failure with appropriate messaging
      *
-     * @param FcmChannel $channel The FCM notification channel
+     * @param  FcmChannel  $channel  The FCM notification channel
      * @return int Command execution status (0 for success, 1 for failure)
      */
     public function handle(FcmChannel $channel): int
@@ -76,9 +74,11 @@ class TestFcmConnectionCommand extends Command
         try {
             $channel->send($notifiable, $notification);
             $this->info('✅ Test notification sent successfully to FCM!');
+
             return Command::SUCCESS;
         } catch (Exception $exception) {
             $this->showErrorWithTroubleshooting($exception);
+
             return Command::FAILURE;
         }
     }
@@ -95,6 +95,7 @@ class TestFcmConnectionCommand extends Command
         if (empty($token)) {
             $this->error('❌ A valid FCM token is required for testing.');
             $this->line('Please provide a token as an argument: php artisan fcm:test-connection YOUR_TOKEN_HERE');
+
             return null;
         }
 
@@ -104,21 +105,23 @@ class TestFcmConnectionCommand extends Command
     /**
      * Create a temporary test notification instance.
      *
-     * @param string $title The notification title
-     * @param string $body The notification body content
+     * @param  string  $title  The notification title
+     * @param  string  $body  The notification body content
      * @return Notification A notification instance implementing ShouldFcm
      */
     private function buildTestNotification(string $title, string $body): Notification
     {
-        return new class($title, $body) extends Notification implements ShouldFcm {
+        return new class($title, $body) extends Notification implements ShouldFcm
+        {
             private string $title;
+
             private string $body;
 
             /**
              * Create a new test notification instance.
              *
-             * @param string $title The notification title
-             * @param string $body The notification body
+             * @param  string  $title  The notification title
+             * @param  string  $body  The notification body
              */
             public function __construct(string $title, string $body)
             {
@@ -129,7 +132,7 @@ class TestFcmConnectionCommand extends Command
             /**
              * Define the delivery channels for the notification.
              *
-             * @param mixed $notifiable The notifiable entity
+             * @param  mixed  $notifiable  The notifiable entity
              * @return array<int, string>
              */
             public function via($notifiable): array
@@ -140,7 +143,7 @@ class TestFcmConnectionCommand extends Command
             /**
              * Convert the notification to an FCM message.
              *
-             * @param mixed $notifiable The notifiable entity
+             * @param  mixed  $notifiable  The notifiable entity
              * @return FcmMessageData The FCM message data
              */
             public function toFcm($notifiable): FcmMessageData
@@ -156,19 +159,21 @@ class TestFcmConnectionCommand extends Command
     /**
      * Create a temporary test notifiable object.
      *
-     * @param string $token The FCM token to use for testing
+     * @param  string  $token  The FCM token to use for testing
      * @return HasFcmToken A notifiable instance implementing HasFcmToken
      */
     private function createMockNotifiable(string $token): HasFcmToken
     {
-        return new class($token) implements HasFcmToken {
+        return new class($token) implements HasFcmToken
+        {
             private string $primaryToken;
+
             private array $tokens = [];
 
             /**
              * Create a new test notifiable instance.
              *
-             * @param string $token The primary FCM token
+             * @param  string  $token  The primary FCM token
              */
             public function __construct(string $token)
             {
@@ -178,12 +183,11 @@ class TestFcmConnectionCommand extends Command
 
             /**
              * Get the FCM tokens relationship.
-             *
-             * @return MorphMany
              */
             public function fcmTokens(): MorphMany
             {
-                return new class extends MorphMany {
+                return new class extends MorphMany
+                {
                     /**
                      * Create a mock MorphMany relationship.
                      */
@@ -263,15 +267,15 @@ class TestFcmConnectionCommand extends Command
              */
             public function hasFcmTokens(): bool
             {
-                return !empty($this->tokens);
+                return ! empty($this->tokens);
             }
 
             /**
              * Register a new FCM token.
              *
-             * @param string $token The token to register
-             * @param bool $isPrimary Whether this should be the primary token
-             * @param array<string, mixed> $metadata Additional token metadata
+             * @param  string  $token  The token to register
+             * @param  bool  $isPrimary  Whether this should be the primary token
+             * @param  array<string, mixed>  $metadata  Additional token metadata
              * @return FcmToken The registered token model
              */
             public function registerFcmToken(
@@ -279,14 +283,14 @@ class TestFcmConnectionCommand extends Command
                 bool $isPrimary = false,
                 array $metadata = []
             ): FcmToken {
-                $fcmToken = new FcmToken();
+                $fcmToken = new FcmToken;
                 $fcmToken->token = $token;
                 $fcmToken->is_primary = $isPrimary;
                 $fcmToken->metadata = $metadata;
                 $fcmToken->is_valid = true;
                 $fcmToken->last_used_at = now();
 
-                if (!in_array($token, $this->tokens, true)) {
+                if (! in_array($token, $this->tokens, true)) {
                     $this->tokens[] = $token;
                 }
 
@@ -300,7 +304,7 @@ class TestFcmConnectionCommand extends Command
             /**
              * Invalidate a specific FCM token.
              *
-             * @param string $token The token to invalidate
+             * @param  string  $token  The token to invalidate
              * @return bool True if token was found and invalidated
              */
             public function invalidateFcmToken(string $token): bool
@@ -324,13 +328,14 @@ class TestFcmConnectionCommand extends Command
                 $count = count($this->tokens);
                 $this->tokens = [];
                 $this->primaryToken = '';
+
                 return $count;
             }
 
             /**
              * Get the FCM tokens for notification routing.
              *
-             * @param mixed $notification The notification being routed
+             * @param  mixed  $notification  The notification being routed
              * @return array<string>|null Array of tokens or null if none exist
              */
             public function routeNotificationForFcm($notification): ?array
@@ -343,12 +348,11 @@ class TestFcmConnectionCommand extends Command
     /**
      * Display a formatted error message with troubleshooting tips.
      *
-     * @param Exception $exception The caught exception
-     * @return void
+     * @param  Exception  $exception  The caught exception
      */
     private function showErrorWithTroubleshooting(Exception $exception): void
     {
-        $this->error('❌ Failed to send test notification: ' . $exception->getMessage());
+        $this->error('❌ Failed to send test notification: '.$exception->getMessage());
 
         if ($this->isVerbose()) {
             $this->line('Exception details:');

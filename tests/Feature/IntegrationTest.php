@@ -17,8 +17,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  * - Multiple users and tokens handling
  * - Token limits enforcement
  * - Cascade deletions
- *
- * @package Andydefer\FcmNotifications\Tests\Feature
  */
 class IntegrationTest extends TestCase
 {
@@ -34,8 +32,6 @@ class IntegrationTest extends TestCase
      * 4. Token invalidation
      * 5. Primary token reassignment
      * 6. Cascade deletion when user is removed
-     *
-     * @return void
      */
     public function test_complete_token_lifecycle(): void
     {
@@ -102,28 +98,26 @@ class IntegrationTest extends TestCase
      * - Token isolation between different users
      * - Correct token counts per user
      * - Global token count accuracy
-     *
-     * @return void
      */
     public function test_token_isolation_between_multiple_users(): void
     {
         // Arrange: Create three users with different token configurations
         $userWithTwoTokens = $this->createTestUser([
             'name' => 'User With Two Tokens',
-            'email' => 'two.tokens@example.com'
+            'email' => 'two.tokens@example.com',
         ]);
         $userWithTwoTokens->registerFcmToken('user1-token1');
         $userWithTwoTokens->registerFcmToken('user1-token2');
 
         $userWithOneToken = $this->createTestUser([
             'name' => 'User With One Token',
-            'email' => 'one.token@example.com'
+            'email' => 'one.token@example.com',
         ]);
         $userWithOneToken->registerFcmToken('user2-token1');
 
         $userWithNoTokens = $this->createTestUser([
             'name' => 'User With No Tokens',
-            'email' => 'no.tokens@example.com'
+            'email' => 'no.tokens@example.com',
         ]);
 
         // Assert: Each user has the expected number of tokens
@@ -158,8 +152,6 @@ class IntegrationTest extends TestCase
      * - Configuration-based token limits are respected
      * - Oldest token is automatically removed when limit is exceeded
      * - New token is successfully added within limits
-     *
-     * @return void
      */
     public function test_enforces_token_limit_with_lru_eviction(): void
     {

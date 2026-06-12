@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Andydefer\FcmNotifications\Traits;
 
-use Andydefer\FcmNotifications\Models\FcmToken;
 use Andydefer\FcmNotifications\Contracts\HasFcmToken;
+use Andydefer\FcmNotifications\Models\FcmToken;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Config;
 
@@ -22,9 +23,8 @@ use Illuminate\Support\Facades\Config;
  * recently used valid token. The `is_primary` database field is maintained for
  * backward compatibility but is no longer actively used in the logic.
  *
- * @package Andydefer\FcmNotifications\Traits
  *
- * @mixin \Illuminate\Database\Eloquent\Model
+ * @mixin Model
  *
  * @see HasFcmToken
  * @see FcmToken
@@ -35,8 +35,6 @@ trait HasFcmNotifications
      * Boot the trait and register model event listeners.
      *
      * Automatically cleans up all associated FCM tokens when the model is deleted.
-     *
-     * @return void
      */
     public static function bootHasFcmNotifications(): void
     {
@@ -50,8 +48,6 @@ trait HasFcmNotifications
      *
      * This method is called by Laravel when the trait is used. It can be used
      * to set default values or initialize any properties.
-     *
-     * @return void
      */
     public function initializeHasFcmNotifications(): void
     {
@@ -60,8 +56,6 @@ trait HasFcmNotifications
 
     /**
      * Get the polymorphic relationship for FCM tokens.
-     *
-     * @return MorphMany
      */
     public function fcmTokens(): MorphMany
     {
@@ -123,9 +117,9 @@ trait HasFcmNotifications
      * Note: The `isPrimary` parameter is maintained for backward compatibility
      * but is no longer used. Primary status is now determined by last_used_at.
      *
-     * @param string $token The FCM token to register
-     * @param bool $isPrimary Deprecated: Maintained for backward compatibility
-     * @param array<string, mixed> $metadata Additional metadata to store with the token
+     * @param  string  $token  The FCM token to register
+     * @param  bool  $isPrimary  Deprecated: Maintained for backward compatibility
+     * @param  array<string, mixed>  $metadata  Additional metadata to store with the token
      * @return FcmToken The registered or updated token model instance
      */
     public function registerFcmToken(
@@ -154,8 +148,6 @@ trait HasFcmNotifications
 
     /**
      * Enforce the maximum token limit before registering a new token.
-     *
-     * @return void
      */
     private function enforceTokenLimitBeforeRegistration(): void
     {
@@ -173,8 +165,6 @@ trait HasFcmNotifications
      *
      * This handles cases where the token already existed and we didn't
      * add a new token, but the count might still be over the limit.
-     *
-     * @return void
      */
     private function enforceTokenLimitAfterRegistration(): void
     {
@@ -189,8 +179,7 @@ trait HasFcmNotifications
     /**
      * Remove the oldest valid tokens.
      *
-     * @param int $count Number of oldest tokens to remove
-     * @return void
+     * @param  int  $count  Number of oldest tokens to remove
      */
     private function removeOldestTokens(int $count): void
     {
@@ -215,7 +204,7 @@ trait HasFcmNotifications
      * Marks the token as invalid without deleting it, which is useful for
      * tracking historical tokens and debugging.
      *
-     * @param string $token The token to invalidate
+     * @param  string  $token  The token to invalidate
      * @return bool True if the token was found and invalidated
      */
     public function invalidateFcmToken(string $token): bool
@@ -243,20 +232,18 @@ trait HasFcmNotifications
      * This method is called by Laravel's notification system to determine
      * which tokens to send the notification to.
      *
-     * @param mixed $notification The notification being routed
+     * @param  mixed  $notification  The notification being routed
      * @return array<string>|null Array of tokens or null if none exist
      */
     public function routeNotificationForFcm($notification): ?array
     {
         $tokens = $this->getFcmTokens();
 
-        return !empty($tokens) ? $tokens : null;
+        return ! empty($tokens) ? $tokens : null;
     }
 
     /**
      * Get the maximum number of tokens allowed per notifiable.
-     *
-     * @return int
      */
     protected function getMaxTokensPerNotifiable(): int
     {

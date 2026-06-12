@@ -19,8 +19,6 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * - Track token validity and last usage
  * - Handle token invalidation when devices are no longer active
  * - Route notifications to the appropriate FCM tokens
- *
- * @package Andydefer\FcmNotifications\Contracts
  */
 interface HasFcmToken
 {
@@ -82,10 +80,10 @@ interface HasFcmToken
      * it as primary and attaching metadata. It should create a new FcmToken
      * record and associate it with the notifiable.
      *
-     * @param string $token The FCM token string to register
-     * @param bool $isPrimary Whether this token should be marked as primary
-     * @param array<string, mixed> $metadata Additional metadata to store with the token
-     *                                       (e.g., device model, platform, app version)
+     * @param  string  $token  The FCM token string to register
+     * @param  bool  $isPrimary  Whether this token should be marked as primary
+     * @param  array<string, mixed>  $metadata  Additional metadata to store with the token
+     *                                          (e.g., device model, platform, app version)
      * @return FcmToken The created token model instance
      */
     public function registerFcmToken(
@@ -101,7 +99,7 @@ interface HasFcmToken
      * an `is_valid` flag to false or by removing it from the database. This is
      * useful when a token is reported as invalid by FCM or when a user logs out.
      *
-     * @param string $token The FCM token to invalidate
+     * @param  string  $token  The FCM token to invalidate
      * @return bool True if the token was found and invalidated, false otherwise
      */
     public function invalidateFcmToken(string $token): bool;
@@ -132,7 +130,7 @@ interface HasFcmToken
      * }
      * </code>
      *
-     * @param mixed $notification The notification instance being routed
+     * @param  mixed  $notification  The notification instance being routed
      * @return array<string>|null Array of token strings or null if no tokens available
      */
     public function routeNotificationForFcm($notification): ?array;

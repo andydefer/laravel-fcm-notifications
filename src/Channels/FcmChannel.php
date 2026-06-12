@@ -12,12 +12,12 @@ use Andydefer\PushNotifier\Dtos\FcmMessageData;
 use Andydefer\PushNotifier\Exceptions\FcmSendException;
 use Andydefer\PushNotifier\Exceptions\FirebaseAuthException;
 use Andydefer\PushNotifier\Exceptions\InvalidConfigurationException;
-use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Exception;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Notification;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Laravel notification channel for sending Firebase Cloud Messaging (FCM) notifications.
@@ -35,8 +35,6 @@ use Exception;
  * - Comprehensive logging
  * - Credentials validation
  * - Exception handling with configurable rethrow behavior
- *
- * @package Andydefer\FcmNotifications\Channels
  */
 class FcmChannel implements ShouldQueue
 {
@@ -44,15 +42,11 @@ class FcmChannel implements ShouldQueue
 
     /**
      * Factory for creating Firebase services.
-     *
-     * @var NotificationFactory
      */
     private NotificationFactory $notificationFactory;
 
     /**
      * Path to the Firebase credentials JSON file.
-     *
-     * @var string
      */
     private string $credentialsPath;
 
@@ -62,15 +56,16 @@ class FcmChannel implements ShouldQueue
      * Validates the credentials path during construction to ensure
      * the channel is properly configured before any notifications are sent.
      *
-     * @param NotificationFactory|null $notificationFactory Factory for creating Firebase services
-     * @param string|null $credentialsPath Path to the Firebase credentials JSON file
+     * @param  NotificationFactory|null  $notificationFactory  Factory for creating Firebase services
+     * @param  string|null  $credentialsPath  Path to the Firebase credentials JSON file
+     *
      * @throws InvalidCredentialsException If credentials are not properly configured
      */
     public function __construct(
         ?NotificationFactory $notificationFactory = null,
         ?string $credentialsPath = null
     ) {
-        $this->notificationFactory = $notificationFactory ?? new NotificationFactory();
+        $this->notificationFactory = $notificationFactory ?? new NotificationFactory;
 
         // Resolve credentials path from constructor argument or config
         $resolvedPath = $credentialsPath ?? Config::get('fcm.credentials');
@@ -91,8 +86,8 @@ class FcmChannel implements ShouldQueue
      * - Ensures file is readable
      * - Validates JSON content
      *
-     * @param mixed $path The path to validate
-     * @return void
+     * @param  mixed  $path  The path to validate
+     *
      * @throws InvalidCredentialsException If credentials are invalid
      */
     private function validateCredentials(mixed $path): void
@@ -103,17 +98,17 @@ class FcmChannel implements ShouldQueue
         }
 
         // Ensure it's a string
-        if (!is_string($path)) {
+        if (! is_string($path)) {
             throw InvalidCredentialsException::invalidPathType(gettype($path));
         }
 
         // Check if file exists
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw InvalidCredentialsException::fileNotFound($path);
         }
 
         // Check if file is readable
-        if (!is_readable($path)) {
+        if (! is_readable($path)) {
             throw InvalidCredentialsException::unreadableFile($path);
         }
 
@@ -139,13 +134,12 @@ class FcmChannel implements ShouldQueue
      * single and multicast messages, and automatically invalidates tokens that
      * are no longer valid.
      *
-     * @param mixed $notifiable The entity receiving the notification
-     * @param Notification $notification The notification to send
-     * @return void
+     * @param  mixed  $notifiable  The entity receiving the notification
+     * @param  Notification  $notification  The notification to send
      */
     public function send($notifiable, Notification $notification): void
     {
-        if (!$this->isValidNotifiable($notifiable, $notification)) {
+        if (! $this->isValidNotifiable($notifiable, $notification)) {
             return;
         }
 
@@ -169,19 +163,21 @@ class FcmChannel implements ShouldQueue
     /**
      * Validate that the notifiable and notification implement required interfaces.
      *
-     * @param mixed $notifiable The entity to validate
-     * @param Notification $notification The notification to validate
+     * @param  mixed  $notifiable  The entity to validate
+     * @param  Notification  $notification  The notification to validate
      * @return bool True if both implement required interfaces
      */
     private function isValidNotifiable($notifiable, Notification $notification): bool
     {
-        if (!$notifiable instanceof HasFcmToken) {
+        if (! $notifiable instanceof HasFcmToken) {
             $this->logWarning('Notifiable must implement HasFcmToken interface', $notifiable);
+
             return false;
         }
 
-        if (!$notification instanceof ShouldFcm) {
+        if (! $notification instanceof ShouldFcm) {
             $this->logWarning('Notification must implement ShouldFcm interface', $notifiable, $notification);
+
             return false;
         }
 
@@ -191,10 +187,9 @@ class FcmChannel implements ShouldQueue
     /**
      * Send the notification to one or multiple FCM tokens.
      *
-     * @param HasFcmToken $notifiable The entity receiving the notification
-     * @param array<string> $tokens Array of FCM tokens
-     * @param FcmMessageData $message The message to send
-     * @return void
+     * @param  HasFcmToken  $notifiable  The entity receiving the notification
+     * @param  array<string>  $tokens  Array of FCM tokens
+     * @param  FcmMessageData  $message  The message to send
      */
     private function sendToTokens(HasFcmToken $notifiable, array $tokens, FcmMessageData $message): void
     {
@@ -204,6 +199,7 @@ class FcmChannel implements ShouldQueue
 
         if (count($tokens) === 1) {
             $this->sendSingleNotification($notifiable, $tokens[0], $firebaseService, $message);
+
             return;
         }
 
@@ -213,11 +209,10 @@ class FcmChannel implements ShouldQueue
     /**
      * Send a notification to a single device.
      *
-     * @param HasFcmToken $notifiable The entity receiving the notification
-     * @param string $token Single FCM token
-     * @param mixed $firebaseService Firebase service instance
-     * @param FcmMessageData $message The message to send
-     * @return void
+     * @param  HasFcmToken  $notifiable  The entity receiving the notification
+     * @param  string  $token  Single FCM token
+     * @param  mixed  $firebaseService  Firebase service instance
+     * @param  FcmMessageData  $message  The message to send
      */
     private function sendSingleNotification(
         HasFcmToken $notifiable,
@@ -240,11 +235,10 @@ class FcmChannel implements ShouldQueue
     /**
      * Send a notification to multiple devices.
      *
-     * @param HasFcmToken $notifiable The entity receiving the notification
-     * @param array<string> $tokens Array of FCM tokens
-     * @param mixed $firebaseService Firebase service instance
-     * @param FcmMessageData $message The message to send
-     * @return void
+     * @param  HasFcmToken  $notifiable  The entity receiving the notification
+     * @param  array<string>  $tokens  Array of FCM tokens
+     * @param  mixed  $firebaseService  Firebase service instance
+     * @param  FcmMessageData  $message  The message to send
      */
     private function sendMulticastNotification(
         HasFcmToken $notifiable,
@@ -263,7 +257,7 @@ class FcmChannel implements ShouldQueue
             }
         }
 
-        $successCount = count(array_filter($results, fn($response) => $response->success));
+        $successCount = count(array_filter($results, fn ($response) => $response->success));
 
         $this->logInfo('FCM multicast notification completed', $notifiable, [
             'total_tokens' => count($tokens),
@@ -276,10 +270,10 @@ class FcmChannel implements ShouldQueue
     /**
      * Handle exceptions that occur during notification sending.
      *
-     * @param Exception $exception The caught exception
-     * @param HasFcmToken $notifiable The notifiable entity
-     * @param Notification|ShouldFcm $notification The notification being sent
-     * @return void
+     * @param  Exception  $exception  The caught exception
+     * @param  HasFcmToken  $notifiable  The notifiable entity
+     * @param  Notification|ShouldFcm  $notification  The notification being sent
+     *
      * @throws Exception If queue is disabled, rethrows the exception
      */
     private function handleSendingException(
@@ -290,20 +284,16 @@ class FcmChannel implements ShouldQueue
         $context = $this->buildExceptionContext($notifiable, $notification);
 
         match (true) {
-            $exception instanceof InvalidConfigurationException =>
-            Log::error('FCM configuration error: ' . $exception->getMessage(), $context),
+            $exception instanceof InvalidConfigurationException => Log::error('FCM configuration error: '.$exception->getMessage(), $context),
 
-            $exception instanceof FirebaseAuthException =>
-            Log::error('FCM authentication failed: ' . $exception->getMessage(), $context),
+            $exception instanceof FirebaseAuthException => Log::error('FCM authentication failed: '.$exception->getMessage(), $context),
 
-            $exception instanceof FcmSendException =>
-            Log::error(
-                'FCM send operation failed: ' . $exception->getMessage(),
+            $exception instanceof FcmSendException => Log::error(
+                'FCM send operation failed: '.$exception->getMessage(),
                 $this->enrichFcmExceptionContext($context, $exception)
             ),
 
-            default =>
-            Log::error('Unexpected FCM error occurred: ' . $exception->getMessage(), $context),
+            default => Log::error('Unexpected FCM error occurred: '.$exception->getMessage(), $context),
         };
 
         if (Config::get('fcm.queue.enabled', true)) {
@@ -316,8 +306,8 @@ class FcmChannel implements ShouldQueue
     /**
      * Build base context array for exception logging.
      *
-     * @param HasFcmToken $notifiable The notifiable entity
-     * @param Notification $notification The notification
+     * @param  HasFcmToken  $notifiable  The notifiable entity
+     * @param  Notification  $notification  The notification
      * @return array<string, mixed>
      */
     private function buildExceptionContext(HasFcmToken $notifiable, Notification $notification): array
@@ -332,8 +322,8 @@ class FcmChannel implements ShouldQueue
     /**
      * Enrich exception context with FCM-specific details.
      *
-     * @param array<string, mixed> $context Base context
-     * @param FcmSendException $exception The FCM exception
+     * @param  array<string, mixed>  $context  Base context
+     * @param  FcmSendException  $exception  The FCM exception
      * @return array<string, mixed>
      */
     private function enrichFcmExceptionContext(array $context, FcmSendException $exception): array
@@ -347,14 +337,13 @@ class FcmChannel implements ShouldQueue
     /**
      * Log a warning message if logging is enabled.
      *
-     * @param string $message Warning message
-     * @param mixed $notifiable The notifiable entity
-     * @param Notification|null $notification Optional notification instance
-     * @return void
+     * @param  string  $message  Warning message
+     * @param  mixed  $notifiable  The notifiable entity
+     * @param  Notification|null  $notification  Optional notification instance
      */
     private function logWarning(string $message, $notifiable, ?Notification $notification = null): void
     {
-        if (!$this->isLoggingEnabled()) {
+        if (! $this->isLoggingEnabled()) {
             return;
         }
 
@@ -368,14 +357,13 @@ class FcmChannel implements ShouldQueue
     /**
      * Log an info message if logging is enabled.
      *
-     * @param string $message Info message
-     * @param HasFcmToken $notifiable The notifiable entity
-     * @param array<string, mixed> $extra Additional context data
-     * @return void
+     * @param  string  $message  Info message
+     * @param  HasFcmToken  $notifiable  The notifiable entity
+     * @param  array<string, mixed>  $extra  Additional context data
      */
     private function logInfo(string $message, HasFcmToken $notifiable, array $extra = []): void
     {
-        if (!$this->isLoggingEnabled()) {
+        if (! $this->isLoggingEnabled()) {
             return;
         }
 
@@ -387,8 +375,6 @@ class FcmChannel implements ShouldQueue
 
     /**
      * Check if logging is enabled in configuration.
-     *
-     * @return bool
      */
     private function isLoggingEnabled(): bool
     {
@@ -397,8 +383,6 @@ class FcmChannel implements ShouldQueue
 
     /**
      * Get the configured logging channel.
-     *
-     * @return string
      */
     private function getLogChannel(): string
     {

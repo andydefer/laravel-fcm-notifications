@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Andydefer\FcmNotifications\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
-use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 /**
  * Eloquent model representing a Firebase Cloud Messaging (FCM) device token.
@@ -21,7 +21,6 @@ use DateTimeInterface;
  * token based on the `last_used_at` timestamp, eliminating the need for a
  * dedicated database field.
  *
- * @package Andydefer\FcmNotifications\Models
  *
  * @property int $id Unique identifier for the token record
  * @property string $tokenable_type The class name of the parent model
@@ -32,7 +31,6 @@ use DateTimeInterface;
  * @property Carbon|null $last_used_at Timestamp of the last successful notification send
  * @property Carbon $created_at Timestamp when the token was registered
  * @property Carbon $updated_at Timestamp when the token was last updated
- *
  * @property-read bool $is_primary Dynamically determines if this is the primary token (most recent)
  *
  * @method static Builder|static valid() Scope to include only valid tokens
@@ -93,13 +91,11 @@ class FcmToken extends Model
      *
      * This method sets up model event listeners:
      * - Automatically sets last_used_at on creation if not provided
-     *
-     * @return void
      */
     protected static function booted(): void
     {
         static::creating(function (self $token): void {
-            if (!isset($token->last_used_at)) {
+            if (! isset($token->last_used_at)) {
                 $token->last_used_at = now();
             }
         });
@@ -110,8 +106,6 @@ class FcmToken extends Model
      *
      * This relationship allows any model (User, Device, etc.) to have multiple
      * FCM tokens associated with it.
-     *
-     * @return MorphTo
      */
     public function tokenable(): MorphTo
     {
@@ -129,7 +123,7 @@ class FcmToken extends Model
      */
     public function getIsPrimaryAttribute(): bool
     {
-        if (!$this->is_valid || !$this->tokenable) {
+        if (! $this->is_valid || ! $this->tokenable) {
             return false;
         }
 
@@ -148,8 +142,7 @@ class FcmToken extends Model
      * Valid tokens are those marked as valid and ready to receive notifications.
      * Invalid tokens are typically those that have expired or returned errors.
      *
-     * @param Builder $query The Eloquent query builder instance
-     * @return Builder
+     * @param  Builder  $query  The Eloquent query builder instance
      */
     public function scopeValid(Builder $query): Builder
     {
@@ -162,9 +155,8 @@ class FcmToken extends Model
      * This scope is useful for cleaning up stale tokens that haven't received
      * notifications for a specified period.
      *
-     * @param Builder $query The Eloquent query builder instance
-     * @param DateTimeInterface $date The cutoff date (tokens unused since this date)
-     * @return Builder
+     * @param  Builder  $query  The Eloquent query builder instance
+     * @param  DateTimeInterface  $date  The cutoff date (tokens unused since this date)
      *
      * @example
      * ```php

@@ -6,10 +6,10 @@ namespace Andydefer\FcmNotifications\Tests\Unit\Console\Commands;
 
 use Andydefer\FcmNotifications\Channels\FcmChannel;
 use Andydefer\FcmNotifications\Tests\TestCase;
+use Exception;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Artisan;
 use Mockery;
-use Exception;
 
 /**
  * Unit tests for the FCM test connection console command.
@@ -20,8 +20,6 @@ use Exception;
  * - Error handling with various exception types
  * - Default values for title and body
  * - Verbose mode output
- *
- * @package Andydefer\FcmNotifications\Tests\Unit\Console\Commands
  */
 class TestFcmConnectionCommandTest extends TestCase
 {
@@ -32,8 +30,6 @@ class TestFcmConnectionCommandTest extends TestCase
 
     /**
      * Set up the test environment before each test.
-     *
-     * @return void
      */
     protected function setUp(): void
     {
@@ -120,7 +116,7 @@ class TestFcmConnectionCommandTest extends TestCase
         $this->assertEquals(1, $exitCode);
 
         $output = Artisan::output();
-        $this->assertStringContainsString('❌ Failed to send test notification: ' . $errorMessage, $output);
+        $this->assertStringContainsString('❌ Failed to send test notification: '.$errorMessage, $output);
         $this->assertStringContainsString('Common issues:', $output);
         $this->assertStringContainsString('Verify your FCM credentials file path', $output);
         $this->assertStringContainsString('Check that the FCM token is valid', $output);
@@ -143,6 +139,7 @@ class TestFcmConnectionCommandTest extends TestCase
             )
             ->andReturnUsing(function ($notifiable, $notification) use (&$capturedNotification) {
                 $capturedNotification = $notification;
+
                 return null;
             });
 
@@ -189,7 +186,7 @@ class TestFcmConnectionCommandTest extends TestCase
         $this->assertEquals(1, $exitCode);
 
         $output = Artisan::output();
-        $this->assertStringContainsString('❌ Failed to send test notification: ' . $errorMessage, $output);
+        $this->assertStringContainsString('❌ Failed to send test notification: '.$errorMessage, $output);
         $this->assertStringContainsString('Exception details:', $output);
 
         // Verify stack trace contains typical PHP debug information
@@ -224,8 +221,6 @@ class TestFcmConnectionCommandTest extends TestCase
 
     /**
      * Clean up after each test.
-     *
-     * @return void
      */
     protected function tearDown(): void
     {

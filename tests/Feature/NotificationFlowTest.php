@@ -6,13 +6,11 @@ namespace Andydefer\FcmNotifications\Tests\Feature;
 
 use Andydefer\FcmNotifications\Tests\Fixtures\TestFcmNotification;
 use Andydefer\FcmNotifications\Tests\TestCase;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Feature tests for the FCM notification delivery flow.
- *
- * @package Andydefer\FcmNotifications\Tests\Feature
  */
 class NotificationFlowTest extends TestCase
 {

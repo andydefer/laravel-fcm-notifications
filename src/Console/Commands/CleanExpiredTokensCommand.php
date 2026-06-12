@@ -6,6 +6,7 @@ namespace Andydefer\FcmNotifications\Console\Commands;
 
 use Andydefer\FcmNotifications\Models\FcmToken;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 
@@ -16,8 +17,6 @@ use Illuminate\Support\Facades\Config;
  * for a specified period. It helps maintain database cleanliness and prevents
  * sending notifications to stale tokens. The command supports both actual
  * cleanup operations and dry-run simulations for safety.
- *
- * @package Andydefer\FcmNotifications\Console\Commands
  */
 class CleanExpiredTokensCommand extends Command
 {
@@ -56,6 +55,7 @@ class CleanExpiredTokensCommand extends Command
 
         if ($this->isDryRun()) {
             $this->displayDryRunResults($expiredTokensCount, $inactivityDays);
+
             return Command::SUCCESS;
         }
 
@@ -78,7 +78,7 @@ class CleanExpiredTokensCommand extends Command
     /**
      * Calculate the cutoff date based on inactivity period.
      *
-     * @param int $inactivityDays Number of days of allowed inactivity
+     * @param  int  $inactivityDays  Number of days of allowed inactivity
      * @return Carbon Cutoff date for token activity
      */
     private function calculateCutoffDate(int $inactivityDays): Carbon
@@ -89,10 +89,9 @@ class CleanExpiredTokensCommand extends Command
     /**
      * Build the query for finding expired tokens.
      *
-     * @param Carbon $cutoffDate Tokens not used since this date are considered expired
-     * @return \Illuminate\Database\Eloquent\Builder
+     * @param  Carbon  $cutoffDate  Tokens not used since this date are considered expired
      */
-    private function buildExpiredTokensQuery(Carbon $cutoffDate): \Illuminate\Database\Eloquent\Builder
+    private function buildExpiredTokensQuery(Carbon $cutoffDate): Builder
     {
         return FcmToken::valid()->notUsedSince($cutoffDate);
     }
@@ -110,9 +109,8 @@ class CleanExpiredTokensCommand extends Command
     /**
      * Display results for dry-run mode.
      *
-     * @param int $expiredTokensCount Number of tokens that would be cleaned
-     * @param int $inactivityDays The inactivity period used
-     * @return void
+     * @param  int  $expiredTokensCount  Number of tokens that would be cleaned
+     * @param  int  $inactivityDays  The inactivity period used
      */
     private function displayDryRunResults(int $expiredTokensCount, int $inactivityDays): void
     {
@@ -128,10 +126,10 @@ class CleanExpiredTokensCommand extends Command
     /**
      * Invalidate expired tokens.
      *
-     * @param \Illuminate\Database\Eloquent\Builder $query Query for expired tokens
+     * @param  Builder  $query  Query for expired tokens
      * @return int Number of tokens invalidated
      */
-    private function invalidateExpiredTokens(\Illuminate\Database\Eloquent\Builder $query): int
+    private function invalidateExpiredTokens(Builder $query): int
     {
         return $query->update(['is_valid' => false]);
     }
@@ -139,9 +137,8 @@ class CleanExpiredTokensCommand extends Command
     /**
      * Display cleanup operation results.
      *
-     * @param int $invalidatedTokensCount Number of tokens successfully invalidated
-     * @param int $inactivityDays The inactivity period used
-     * @return void
+     * @param  int  $invalidatedTokensCount  Number of tokens successfully invalidated
+     * @param  int  $inactivityDays  The inactivity period used
      */
     private function displayCleanupResults(int $invalidatedTokensCount, int $inactivityDays): void
     {

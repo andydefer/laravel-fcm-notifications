@@ -22,8 +22,6 @@ return new class extends Migration
      *
      * The "primary" token concept is now determined dynamically based on the most recent
      * last_used_at timestamp, eliminating the need for a dedicated database field.
-     *
-     * @return void
      */
     public function up(): void
     {
@@ -79,8 +77,6 @@ return new class extends Migration
 
     /**
      * Drop the fcm_tokens table.
-     *
-     * @return void
      */
     public function down(): void
     {

@@ -14,8 +14,6 @@ use Exception;
  * when the file is not readable, or when the file contains invalid JSON.
  * It provides specific factory methods for different error scenarios
  * to help developers quickly identify and fix configuration issues.
- *
- * @package Andydefer\FcmNotifications\Exceptions
  */
 class InvalidCredentialsException extends Exception
 {
@@ -24,8 +22,6 @@ class InvalidCredentialsException extends Exception
      *
      * This is thrown when the credentials path is null or empty string,
      * indicating that the FCM configuration has not been properly set up.
-     *
-     * @return self
      */
     public static function missingConfiguration(): self
     {
@@ -39,8 +35,7 @@ class InvalidCredentialsException extends Exception
      *
      * This is thrown when the configured path points to a file that does not exist.
      *
-     * @param string $path The path that was checked
-     * @return self
+     * @param  string  $path  The path that was checked
      */
     public static function fileNotFound(string $path): self
     {
@@ -54,8 +49,7 @@ class InvalidCredentialsException extends Exception
      *
      * This is thrown when the file exists but cannot be read due to permissions.
      *
-     * @param string $path The path to the unreadable file
-     * @return self
+     * @param  string  $path  The path to the unreadable file
      */
     public static function unreadableFile(string $path): self
     {
@@ -69,9 +63,8 @@ class InvalidCredentialsException extends Exception
      *
      * This is thrown when the file exists and is readable but contains invalid JSON.
      *
-     * @param string $path The path to the invalid file
-     * @param string $error The JSON error message
-     * @return self
+     * @param  string  $path  The path to the invalid file
+     * @param  string  $error  The JSON error message
      */
     public static function invalidJson(string $path, string $error): self
     {
@@ -85,8 +78,7 @@ class InvalidCredentialsException extends Exception
      *
      * This is thrown when the credentials path is not a string.
      *
-     * @param string $type The actual type received
-     * @return self
+     * @param  string  $type  The actual type received
      */
     public static function invalidPathType(string $type): self
     {

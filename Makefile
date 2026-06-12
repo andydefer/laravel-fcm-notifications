@@ -24,7 +24,7 @@ IGNORED_FILES = CHANGED_FILES.md FILES_CHECKLIST.md psalm.md phpstan.md pint-tes
 # ---------------------------------------------------
 
 .PHONY: pre-commit
-pre-commit:
+pre-commit: ## Run pre-commit checks (format, test)
 	@echo "🔍 Running pre-commit checks..."
 	@rm -f all.txt diff.txt
 	@make lint-all-fix-md
@@ -32,19 +32,17 @@ pre-commit:
 	@echo "✅ Pre-commit checks passed"
 
 .PHONY: toggle-prompts
-toggle-prompts:
+toggle-prompts: ## Toggle prompts in .gitignore
 	@if grep -q '^prompts/' .gitignore; then \
-		# Il est décommenté → on commente \
 		sed -i.bak 's/^prompts\//#prompts\//' .gitignore; \
 		echo "✅ prompts/ commented in .gitignore"; \
 	else \
-		# Il est commenté → on décommente \
 		sed -i.bak 's/^#\s*prompts\//prompts\//' .gitignore; \
 		echo "✅ prompts/ uncommented in .gitignore"; \
 	fi
 
 .PHONY: git-commit-push
-git-commit-push: pre-commit update-checklist
+git-commit-push: pre-commit ## Commit and push all changes with confirmation
 	@make toggle-prompts
 	@read -p "Enter commit message: " commit_message; \
 	if [ -z "$$commit_message" ]; then \
@@ -56,9 +54,17 @@ git-commit-push: pre-commit update-checklist
 	git push
 	@make toggle-prompts
 
+git-reset-hard: ## Réinitialise complètement le repo au dernier commit (⚠️ destructif)
+	@echo "⚠️ Va supprimer tous les changements non commités !"
+	@read -p "Tapez 'yes' pour continuer : " confirm; \
+	if [ "$$confirm" = "yes" ]; then \
+		git reset --hard HEAD && git clean -fd; \
+	else \
+		echo "❌ Annulé."; \
+	fi
 
 .PHONY: git-tag
-git-tag:
+git-tag: ## Create and push a new version tag (major/minor/patch)
 	@bash -c '\
 	read -p "Tag type (major/minor/patch): " tag_type; \
 	last_tag=$$(git tag --sort=-v:refname | head -n 1); \
@@ -77,109 +83,9 @@ git-tag:
 	git push origin "$$new_tag"; \
 	echo "✅ Released new tag: $$new_tag"; \
 	'
-.PHONY: generate-ai-diff
-generate-ai-diff:
-	@read -p "📁 Enter directory/path(s) to include in the diff (space-separated, leave empty for all changes): " DIR_PATHS; \
-	if [ -z "$$DIR_PATHS" ]; then \
-		echo "📝 Generating git diff for ALL changes into diff.txt..."; \
-		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > diff.txt; \
-		echo "" >> diff.txt; \
-		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "1. Propose un nom de commit clair et concis en anglais" >> diff.txt; \
-		echo "   avec le format <type>(<scope>): <description>," >> diff.txt; \
-		echo "   en respectant les Conventional Commits" >> diff.txt; \
-		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> diff.txt; \
-		echo "   orienté métier et technique." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> diff.txt; \
-		echo "   - méthodes ajoutées, modifiées ou supprimées" >> diff.txt; \
-		echo "   - responsabilités déplacées ou clarifiées" >> diff.txt; \
-		echo "   - améliorations de validation, de logique ou de structure" >> diff.txt; \
-		echo "   - impacts fonctionnels éventuels" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "Contraintes :" >> diff.txt; \
-		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> diff.txt; \
-		echo "   - Sois précis, factuel et structuré" >> diff.txt; \
-		echo "   - Évite les suppositions" >> diff.txt; \
-		echo "   - Utilise un ton professionnel" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> diff.txt; \
-		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> diff.txt; \
-		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> diff.txt; \
-		echo "   - Utilise STRICTEMENT la structure suivante :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ## [X.0.0] - YYYY-MM-DD" >> diff.txt; \
-		echo "     ### Changed" >> diff.txt; \
-		echo "     - Description claire du changement cassant" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ### Removed (si applicable)" >> diff.txt; \
-		echo "     - API, méthode ou comportement supprimé" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ### Security (si applicable)" >> diff.txt; \
-		echo "     - Impact sécurité lié au changement" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> diff.txt; \
-		echo "   - N'invente PAS de version." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "Voici le diff :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		git diff HEAD -- . ':!*.phpunit.result.cache' ':!diff.txt' >> diff.txt; \
-		echo "✅ Clean diff.txt generated successfully for ALL changes (excluded test cache files)"; \
-	else \
-		echo "📝 Generating clean git diff for paths: $${DIR_PATHS} into diff.txt..."; \
-		echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > diff.txt; \
-		echo "" >> diff.txt; \
-		echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "1. Propose un nom de commit clair et concis en anglais" >> diff.txt; \
-		echo "   avec le format <type>(<scope>): <description>," >> diff.txt; \
-		echo "   en respectant les Conventional Commits" >> diff.txt; \
-		echo "   (ex: feat:, fix:, refactor:, test:, chore:, docs:)." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "2. Rédige un résumé du travail effectué en quelques phrases," >> diff.txt; \
-		echo "   orienté métier et technique." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "3. Donne une liste d'exemples concrets de changements, en t'appuyant sur le diff :" >> diff.txt; \
-		echo "   - méthodes ajoutées, modifiées ou supprimées" >> diff.txt; \
-		echo "   - responsabilités déplacées ou clarifiées" >> diff.txt; \
-		echo "   - améliorations de validation, de logique ou de structure" >> diff.txt; \
-		echo "   - impacts fonctionnels éventuels" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "Contraintes :" >> diff.txt; \
-		echo "   - Ne décris que ce qui est réellement visible dans le diff" >> diff.txt; \
-		echo "   - Sois précis, factuel et structuré" >> diff.txt; \
-		echo "   - Évite les suppositions" >> diff.txt; \
-		echo "   - Utilise un ton professionnel" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "4. SI et SEULEMENT SI les changements sont cassants (breaking changes) :" >> diff.txt; \
-		echo "   - Génère une entrée de CHANGELOG conforme à Keep a Changelog et SemVer." >> diff.txt; \
-		echo "   - Le changelog doit apparaître APRES les recommandations ci-dessus." >> diff.txt; \
-		echo "   - Utilise STRICTEMENT la structure suivante :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ## [X.0.0] - YYYY-MM-DD" >> diff.txt; \
-		echo "     ### Changed" >> diff.txt; \
-		echo "     - Description claire du changement cassant" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ### Removed (si applicable)" >> diff.txt; \
-		echo "     - API, méthode ou comportement supprimé" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "     ### Security (si applicable)" >> diff.txt; \
-		echo "     - Impact sécurité lié au changement" >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "   - Ne génère PAS de changelog si aucun breaking change n'est détecté." >> diff.txt; \
-		echo "   - N'invente PAS de version." >> diff.txt; \
-		echo "" >> diff.txt; \
-		echo "Voici le diff :" >> diff.txt; \
-		echo "" >> diff.txt; \
-		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!diff.txt' >> diff.txt; \
-		echo "✅ Clean diff.txt generated successfully for paths: $${DIR_PATHS} (excluded test cache files)"; \
-	fi
 
 .PHONY: git-tag-republish
-git-tag-republish:
+git-tag-republish: ## Force push the last tag
 	@bash -c '\
 	last_tag=$$(git tag --sort=-v:refname | head -n 1); \
 	if [ -z "$$last_tag" ]; then echo "❌ No tags found!"; exit 1; fi; \
@@ -189,11 +95,83 @@ git-tag-republish:
 	'
 
 # ---------------------------------------------------
+# 📝 WORK SUMMARY & AI DIFF
+# ---------------------------------------------------
+
+.PHONY: work-create-summary
+work-create-summary: ## Create a work summary markdown file
+	@read -p "📝 Nom du résumé : " NAME; \
+	DATE=$$(date +%Y-%m-%d); \
+	TIME=$$(date +%H-%M-%S); \
+	FILENAME="docs/work-summaries/$${DATE}T$${TIME}-$${NAME}.md"; \
+	mkdir -p docs/work-summaries; \
+	echo "📋 Colle le contenu Markdown (CTRL+D) :"; \
+	cat > "$$FILENAME"; \
+	echo "✅ Fichier créé : $$FILENAME"
+
+.PHONY: generate-ai-diff
+generate-ai-diff: ## Generate clean diff for AI review
+	@read -p "📁 Chemins (vide = tous) : " DIR_PATHS; \
+	DATE=$$(date +%Y-%m-%d); \
+	TIME=$$(date +%H-%M-%S); \
+	DIFF_FILENAME="docs/diffs/$${DATE}T$${TIME}-diff.md"; \
+	mkdir -p docs/diffs; \
+	echo "Tu es un expert en revue de code et en conventions de commits (Conventional Commits)." > $$DIFF_FILENAME; \
+	echo "" >> $$DIFF_FILENAME; \
+	echo "À partir du diff Git ci-dessous, fais les choses suivantes :" >> $$DIFF_FILENAME; \
+	echo "" >> $$DIFF_FILENAME; \
+	echo "1. Propose un nom de fichier pour le work summary" >> $$DIFF_FILENAME; \
+	echo "2. Propose un nom de commit clair et concis en anglais avec le format <type>(<scope>): <description>" >> $$DIFF_FILENAME; \
+	echo "3. Rédige un résumé du travail effectué en quelques phrases (en français)" >> $$DIFF_FILENAME; \
+	echo "4. Donne une liste d'exemples concrets de changements" >> $$DIFF_FILENAME; \
+	echo "" >> $$DIFF_FILENAME; \
+	echo "Voici le diff :" >> $$DIFF_FILENAME; \
+	echo "" >> $$DIFF_FILENAME; \
+	echo '```diff' >> $$DIFF_FILENAME; \
+	if [ -z "$$DIR_PATHS" ]; then \
+		git diff HEAD -- . ':!*.phpunit.result.cache' ':!diff.txt' ':!docs/*' >> $$DIFF_FILENAME; \
+	else \
+		git diff HEAD -- $$DIR_PATHS ':!*.phpunit.result.cache' ':!diff.txt' ':!docs/*' >> $$DIFF_FILENAME; \
+	fi; \
+	echo '```' >> $$DIFF_FILENAME; \
+	echo "" >> $$DIFF_FILENAME; \
+	echo "✅ Diff généré : $$DIFF_FILENAME"
+
+.PHONY: work-create-summary-from-diff
+work-create-summary-from-diff: generate-ai-diff ## Create work summary from AI diff analysis
+	@echo ""
+	@echo "📄 Le fichier diff a été généré dans docs/diffs/"
+	@echo "📋 Envoie ce fichier à l'IA pour analyse"
+	@echo ""
+	@read -p "Appuie sur ENTRÉE quand tu as reçu la réponse de l'IA..." ENTER
+	@echo ""
+	@read -p "📝 Nom du fichier work summary : " NAME; \
+	DATE=$$(date +%Y-%m-%d); \
+	TIME=$$(date +%H-%M-%S); \
+	FILENAME="docs/work-summaries/$${DATE}T$${TIME}-$${NAME}.md"; \
+	mkdir -p docs/work-summaries; \
+	echo "📋 Colle la réponse de l'IA (CTRL+D pour terminer) :"; \
+	cat > "$$FILENAME"; \
+	echo "✅ Work summary créé : $$FILENAME"; \
+	echo ""; \
+	read -p "📝 Message de commit (proposé par l'IA) : " COMMIT_MSG; \
+	if [ -n "$$COMMIT_MSG" ]; then \
+		git add .; \
+		git commit -m "$$COMMIT_MSG"; \
+		echo "✅ Commit créé"; \
+		read -p "🚀 Pousser le commit ? (o/N) : " PUSH_CONFIRM; \
+		if [ "$$PUSH_CONFIRM" = "o" ] || [ "$$PUSH_CONFIRM" = "O" ]; then \
+			git push origin $(GIT_BRANCH); \
+			echo "✅ Commit poussé"; \
+		fi \
+	fi
+
+# ---------------------------------------------------
 # File Management Operations
 # ---------------------------------------------------
 
 .PHONY: update-checklist
-update-checklist:
+update-checklist: ## Update file checklist
 	@echo "📋 Updating FILES_CHECKLIST.md..."
 	@if [ -f FILES_CHECKLIST.md ]; then \
 		grep -E '^[0-9]+\. .* \[[ xX]\]$$' FILES_CHECKLIST.md > .existing_checklist.tmp; \
@@ -234,7 +212,7 @@ update-checklist:
 	echo "✅ FILES_CHECKLIST.md updated successfully"
 
 .PHONY: list-modified-files
-list-modified-files:
+list-modified-files: ## List modified files
 	@echo "📝 Updating CHANGED_FILES.md..."
 	@previously_checked_files=$$(grep -E '^[0-9]+\. .* \[[xX]\]' FILES_CHECKLIST.md | sed 's/^[0-9]\+\. //' | sed 's/ *\[[xX]\]$$//'); \
 	modified_file_count=0; \
@@ -271,27 +249,66 @@ list-modified-files:
 	echo "✅ CHANGED_FILES.md updated successfully"
 
 .PHONY: update-all
-update-all: update-checklist list-modified-files
+update-all: update-checklist list-modified-files ## Update all file management files
 	@echo "✅ All file management updates completed"
 
-.PHONY: concat-all
-concat-all:
-	@read -p "📁 Enter the source directory path to scan (leave empty for default './src ./database ./tests'): " SOURCE_PATH; \
+.PHONY: concat-md
+concat-md: ## Concatenate all Markdown files into all.md
+	@read -p "📁 Enter the source directory path to scan (leave empty for current directory '.'): " SOURCE_PATH; \
 	if [ -z "$$SOURCE_PATH" ]; then \
-		SOURCE_DIRS="./src ./database ./config ./tests"; \
-		echo "🔗 Concatenating all PHP files from default directories: $${SOURCE_DIRS} into all.txt..."; \
+		SOURCE_DIRS="."; \
+		echo "🔗 Concatenating all .md files from current directory into all.md..."; \
 	else \
 		SOURCE_DIRS="$$SOURCE_PATH"; \
-		echo "🔗 Concatenating all PHP files from directory: $${SOURCE_DIRS} into all.txt..."; \
+		echo "🔗 Concatenating all .md files from directory: $${SOURCE_DIRS} into all.md..."; \
 	fi; \
-	find $${SOURCE_DIRS} -type f -name "*.php" -exec sh -c 'echo ""; echo "// ==== {} ==="; echo ""; cat {}' \; > all.txt; \
-	echo "✅ File all.txt generated successfully from: $${SOURCE_DIRS}"
+	find $${SOURCE_DIRS} -type f -name "*.md" -exec sh -c 'echo ""; echo "<!-- ==== {} ==== -->"; echo ""; cat {}' \; > all.md; \
+	echo "✅ File all.md generated successfully from: $${SOURCE_DIRS}"
+
+concat-all: ## Concatène tous les fichiers PHP, TS, TSX
+	@read -p "📁 Répertoire (vide = ./app ./database ./routes) : " SOURCE_PATH; \
+	if [ -z "$$SOURCE_PATH" ]; then \
+		SOURCE_DIRS="./app ./database ./routes"; \
+	else \
+		SOURCE_DIRS="$$SOURCE_PATH"; \
+	fi; \
+	find $$SOURCE_DIRS -type f \( -name "*.php" -o -name "*.ts" -o -name "*.tsx" \) -exec sh -c 'echo ""; echo "// ==== {} ==="; echo ""; cat {}' \; > all.txt; \
+	echo "✅ all.txt généré"
+
+
 # ---------------------------------------------------
 # Testing
 # ---------------------------------------------------
 
+.PHONY: clean-testbench-migrations
+clean-testbench-migrations: ## Clean Orchestra Testbench migrations
+	@echo "🧹 Cleaning Orchestra Testbench migrations..."
+	@rm -f vendor/orchestra/testbench-core/laravel/database/migrations/*_create_nemesis_*_table.php 2>/dev/null || true
+	@rm -f vendor/orchestra/testbench-core/laravel/database/migrations/*_create_test_*_table.php 2>/dev/null || true
+	@echo "✅ Testbench migrations cleaned"
+
+.PHONY: clean-testbench-cache
+clean-testbench-cache: ## Clean Testbench cache
+	@echo "🧹 Cleaning Testbench cache..."
+	@rm -rf bootstrap/cache/*.php 2>/dev/null || true
+	@rm -rf storage/framework/cache/* 2>/dev/null || true
+	@echo "✅ Testbench cache cleaned"
+
+.PHONY: clean-testbench-all
+clean-testbench-all: clean-testbench-migrations clean-testbench-cache ## Clean all Testbench data
+	@echo "🧹 Cleaning all Testbench data..."
+	@rm -rf vendor/orchestra/testbench-core/laravel/database/*.sqlite 2>/dev/null || true
+	@rm -rf vendor/orchestra/testbench-core/laravel/storage/framework/cache/* 2>/dev/null || true
+	@echo "✅ Testbench fully cleaned"
+
+.PHONY: clean-vendor
+clean-vendor: ## Clean vendor directory
+	@echo "🧹 Cleaning vendor..."
+	@rm -rf vendor/andydefer/laravel-nemesis 2>/dev/null || true
+	@echo "✅ Vendor cleaned"
+
 .PHONY: test
-test: clean-testbench-migrations
+test: clean-testbench-all ## Run PHPUnit tests
 	@./vendor/bin/phpunit --testdox --display-notices
 
 # ---------------------------------------------------
@@ -299,31 +316,31 @@ test: clean-testbench-migrations
 # ---------------------------------------------------
 
 .PHONY: lint-php
-lint-php:
+lint-php: ## Run Pint code formatter (test mode)
 	@echo "🛠️  Running Pint code formatter..."
 	@$(PINT) --test
 	@echo "✅ Pint formatting check completed"
 
 .PHONY: lint-php-fix
-lint-php-fix:
+lint-php-fix: ## Apply Pint code formatting
 	@echo "🛠️  Running Pint code formatter..."
 	@$(PINT)
 	@echo "✅ Pint formatting applied"
 
 .PHONY: lint-phpstan
-lint-phpstan:
+lint-phpstan: ## Run PHPStan static analysis
 	@echo "🔍 Running PHPStan static analysis..."
 	@$(PHPSTAN) analyse src tests --level=max
 	@echo "✅ PHPStan analysis completed"
 
 .PHONY: lint-rector
-lint-rector:
+lint-rector: ## Run Rector refactoring
 	@echo "🔄 Running Rector refactoring..."
 	@$(RECTOR) process
 	@echo "✅ Rector refactoring completed"
 
 .PHONY: lint-psalm
-lint-psalm:
+lint-psalm: ## Run Psalm static analysis
 	@echo "📖 Running Psalm static analysis..."
 	@$(PSALM) --show-info=true
 	@echo "✅ Psalm analysis completed"
@@ -333,7 +350,7 @@ lint-psalm:
 # ---------------------------------------------------
 
 .PHONY: lint-php-md
-lint-php-md:
+lint-php-md: ## Run Pint and save report to pint.md
 	@echo "📊 Running Pint and saving report to pint.md..."
 	@echo "# Pint Code Formatter Report" > pint.md
 	@echo "*Generated: $$(date)*" >> pint.md
@@ -342,7 +359,7 @@ lint-php-md:
 	@echo "✅ Pint report saved to pint.md"
 
 .PHONY: lint-php-fix-md
-lint-php-fix-md:
+lint-php-fix-md: ## Test Pint formatting and save report to pint-test.md
 	@echo "📊 Running Pint formatting test and saving report to pint-test.md..."
 	@echo "# Pint Formatting Test Report" > pint-test.md
 	@echo "*Generated: $$(date)*" >> pint-test.md
@@ -351,7 +368,7 @@ lint-php-fix-md:
 	@echo "✅ Pint formatting test report saved to pint-test.md"
 
 .PHONY: lint-phpstan-md
-lint-phpstan-md:
+lint-phpstan-md: ## Run PHPStan and save report to phpstan.md
 	@echo "📊 Running PHPStan and saving report to phpstan.md..."
 	@echo "# PHPStan Static Analysis Report" > phpstan.md
 	@echo "*Generated: $$(date)*" >> phpstan.md
@@ -360,7 +377,7 @@ lint-phpstan-md:
 	@echo "✅ PHPStan report saved to phpstan.md"
 
 .PHONY: lint-rector-md
-lint-rector-md:
+lint-rector-md: ## Run Rector and save report to rector.md
 	@echo "📊 Running Rector and saving report to rector.md..."
 	@echo "# Rector Refactoring Report" > rector.md
 	@echo "*Generated: $$(date)*" >> rector.md
@@ -369,7 +386,7 @@ lint-rector-md:
 	@echo "✅ Rector report saved to rector.md"
 
 .PHONY: lint-psalm-md
-lint-psalm-md:
+lint-psalm-md: ## Run Psalm and save report to psalm.md
 	@echo "📊 Running Psalm and saving report to psalm.md..."
 	@echo "# Psalm Static Analysis Report" > psalm.md
 	@echo "*Generated: $$(date)*" >> psalm.md
@@ -377,110 +394,102 @@ lint-psalm-md:
 	@$(PSALM) --show-info=true --no-progress 2>&1 >> psalm.md || true
 	@echo "✅ Psalm report saved to psalm.md"
 
-.PHONY: clean-testbench-migrations
-clean-testbench-migrations:
-	@echo "🧹 Cleaning Orchestra Testbench migrations..."
-	@rm -f vendor/orchestra/testbench-core/laravel/database/migrations/*_create_fuzzy_*_table.php || true
-	@echo "✅ Testbench migrations cleaned"
-
 # ---------------------------------------------------
 # Batch Quality Checks (Non-blocking)
 # ---------------------------------------------------
 
 .PHONY: lint-all-md
-lint-all-md:
+lint-all-md: ## Run all linters and save reports (non-blocking)
 	@echo "📦 Running all code quality checks and saving reports..."
 	@make lint-php-md
 	@make lint-phpstan-md
 	@make lint-psalm-md
 	@echo "✅ All code quality reports generated"
-	@echo "📋 Reports:"
-	@echo "  - pint.md (Pint formatting)"
-	@echo "  - phpstan.md (PHPStan analysis)"
-	@echo "  - psalm.md (Psalm analysis)"
 
 .PHONY: lint-all-fix-md
-lint-all-fix-md:
+lint-all-fix-md: ## Run all fixers and save reports (non-blocking)
 	@echo "📦 Running all code fixers and saving reports..."
-	@make lint-php-fix-md
+	@make lint-php-fix
 	@echo "✅ All code fixer reports generated"
-	@echo "📋 Reports:"
-	@echo "  - pint-test.md (Pint formatting test)"
 
 # ---------------------------------------------------
 # Release Management Workflow
 # ---------------------------------------------------
 
 .PHONY: pre-release
-pre-release:
+pre-release: ## Run all pre-release checks
 	@echo "🚀 Running pre-release checks..."
-	@echo "📊 Generating quality reports..."
 	@make test
 	@make lint-all-md
 	@echo "✅ Pre-release checks completed"
-	@echo "📋 Review reports before release:"
-	@echo "  - pint.md (formatting issues)"
-	@echo "  - phpstan.md (static analysis errors)"
-	@echo "  - psalm.md (type checking issues)"
 
 .PHONY: release
-release: pre-release
-	@echo "🚀 Creating release..."
-	@make git-tag
-	@echo "✅ Release created successfully"
+release: pre-release git-tag ## Create new release (includes pre-release)
+	@echo "🚀 Release created successfully"
 
 .PHONY: post-release
-post-release:
+post-release: update-all ## Clean up after release
 	@echo "🧹 Performing post-release cleanup..."
-	@make update-all
 	@echo "✅ Post-release cleanup completed"
+
+# ---------------------------------------------------
+# File Comments
+# ---------------------------------------------------
+
+.PHONY: add-file-comments
+add-file-comments: ## Add path comments to PHP files
+	@echo "📁 Ajout des commentaires de chemin dans les fichiers PHP..."
+	@read -p "📂 Entrez les dossiers à parcourir (séparés par des espaces, ex: src tests): " dirs; \
+	if [ -z "$$dirs" ]; then \
+		echo "❌ Aucun dossier spécifié. Opération annulée."; \
+		exit 1; \
+	fi; \
+	for dir in $$dirs; do \
+		if [ ! -d "$$dir" ]; then \
+			echo "⚠️  Dossier non trouvé: $$dir"; \
+			continue; \
+		fi; \
+		echo "📂 Traitement du dossier: $$dir"; \
+		find $$dir -type f -name "*.php" -not -path "*/vendor/*" | while read file; do \
+			line2=$$(sed -n '2p' "$$file"); \
+			if echo "$$line2" | grep -q "^//.*\.php"; then \
+				echo "⏭️  $$file (déjà commenté)"; \
+			else \
+				echo "🔧 Ajout du commentaire: $$file"; \
+				if head -n 1 "$$file" | grep -q "^<?php"; then \
+					sed -i "1s|^<?php|<?php\n// $$file|" "$$file"; \
+				else \
+					sed -i "1i<?php\n// $$file" "$$file"; \
+				fi; \
+				echo "✅ $$file"; \
+			fi; \
+		done; \
+	done; \
+	echo "✨ Terminé !"
+
+.PHONY: diagram 
+diagram: ## Convertir un DOT en PNG pour voir en ligne sur https://dreampuf.github.io/GraphvizOnline/
+	@echo "📐 Conversion du diagramme DOT en PNG"
+	@echo ""
+	@read -p "📁 Chemin vers le fichier .dot (relatif ou absolu): " DOT_PATH; \
+	if [ ! -f "$$DOT_PATH" ]; then \
+		echo "❌ Fichier introuvable: $$DOT_PATH"; \
+		exit 1; \
+	fi; \
+	mkdir -p diagrams; \
+	OUTPUT_NAME=$$(basename "$$DOT_PATH" .dot); \
+	echo "📝 Génération de diagrams/$$OUTPUT_NAME.png..."; \
+	dot -Tpng -Gdpi=300 "$$DOT_PATH" -o "diagrams/$$OUTPUT_NAME.png"; \
+	echo "✅ Diagramme généré: diagrams/$$OUTPUT_NAME.png"
 
 # ---------------------------------------------------
 # Help & Documentation
 # ---------------------------------------------------
 
 .PHONY: help
-help:
-	@echo "📚 Available commands:"
-	@echo ""
-	@echo "🚀 Version Control:"
-	@echo "  git-commit-push       Commit and push all changes"
-	@echo "  git-tag               Create and push a new version tag"
-	@echo "  generate-ai-diff      Generate clean diff for AI review"
-	@echo "  git-tag-republish     Force push the last tag"
-	@echo ""
-	@echo "📁 File Management:"
-	@echo "  update-checklist      Update file checklist"
-	@echo "  list-modified-files   List modified files"
-	@echo "  update-all            Update checklist and modified files"
-	@echo "  concat-all            Concatenate all PHP files"
-	@echo ""
-	@echo "🧪 Testing:"
-	@echo "  test                  Run PHPUnit tests"
-	@echo ""
-	@echo "🔍 Code Quality (Console - fails on error):"
-	@echo "  lint-php              Run Pint code formatter"
-	@echo "  lint-php-fix          Apply formatting with Pint"
-	@echo "  lint-phpstan          Run PHPStan static analysis"
-	@echo "  lint-rector           Apply refactoring with Rector"
-	@echo "  lint-psalm            Run Psalm analysis"
-	@echo ""
-	@echo "📊 Code Quality (Markdown - non-blocking):"
-	@echo "  lint-php-md           Run Pint and save report"
-	@echo "  lint-php-fix-md       Test formatting and save report"
-	@echo "  lint-phpstan-md       Run PHPStan and save results"
-	@echo "  lint-rector-md        Run Rector and save report"
-	@echo "  lint-psalm-md         Run Psalm and save results"
-	@echo "  lint-all-md           Run all linters (non-blocking)"
-	@echo "  lint-all-fix-md       Run all fixers (non-blocking)"
-	@echo ""
-	@echo "🔄 Release Management:"
-	@echo "  pre-release           Run all pre-release checks"
-	@echo "  release               Create new release (includes pre-release)"
-	@echo "  post-release          Clean up after release"
-	@echo ""
-	@echo "❓ Help:"
-	@echo "  help                  Display this help message"
+help: ## Affiche cette aide
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 # ---------------------------------------------------
 # Default Target

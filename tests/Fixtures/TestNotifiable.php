@@ -15,8 +15,6 @@ use Illuminate\Support\Collection;
  * This class provides a lightweight, in-memory implementation of the HasFcmToken
  * interface that doesn't require a database connection. It's used in unit tests
  * to verify token management functionality without the overhead of Eloquent models.
- *
- * @package Andydefer\FcmNotifications\Tests\Fixtures
  */
 class TestNotifiable implements HasFcmToken
 {
@@ -37,7 +35,7 @@ class TestNotifiable implements HasFcmToken
     /**
      * Create a new test notifiable instance.
      *
-     * @param array<string> $initialTokens Initial set of active tokens
+     * @param  array<string>  $initialTokens  Initial set of active tokens
      */
     public function __construct(array $initialTokens = [])
     {
@@ -49,12 +47,11 @@ class TestNotifiable implements HasFcmToken
      *
      * Returns a mock MorphMany relationship that doesn't interact with the database.
      * This allows testing of token management without requiring actual database tables.
-     *
-     * @return MorphMany
      */
     public function fcmTokens(): MorphMany
     {
-        return new class extends MorphMany {
+        return new class extends MorphMany
+        {
             /**
              * Create a mock MorphMany relationship that bypasses database requirements.
              */
@@ -75,8 +72,6 @@ class TestNotifiable implements HasFcmToken
 
             /**
              * Add constraints to the relationship query.
-             *
-             * @return void
              */
             public function addConstraints(): void
             {
@@ -86,8 +81,7 @@ class TestNotifiable implements HasFcmToken
             /**
              * Add eager constraints to the relationship query.
              *
-             * @param array<int, mixed> $models
-             * @return void
+             * @param  array<int, mixed>  $models
              */
             public function addEagerConstraints(array $models): void
             {
@@ -97,8 +91,8 @@ class TestNotifiable implements HasFcmToken
             /**
              * Initialize the relation on a set of models.
              *
-             * @param array<int, mixed> $models
-             * @param string $relation
+             * @param  array<int, mixed>  $models
+             * @param  string  $relation
              * @return array<int, mixed>
              */
             public function initRelation(array $models, $relation): array
@@ -109,9 +103,9 @@ class TestNotifiable implements HasFcmToken
             /**
              * Match the eagerly loaded results to their parents.
              *
-             * @param array<int, mixed> $models
-             * @param Collection<int, mixed> $results
-             * @param string $relation
+             * @param  array<int, mixed>  $models
+             * @param  Collection<int, mixed>  $results
+             * @param  string  $relation
              * @return array<int, mixed>
              */
             public function match(array $models, $results, $relation): array
@@ -122,9 +116,9 @@ class TestNotifiable implements HasFcmToken
             /**
              * Get the relationship for eager loading.
              *
-             * @param mixed $query
-             * @param mixed $parentQuery
-             * @param array<int, string>|string $columns
+             * @param  mixed  $query
+             * @param  mixed  $parentQuery
+             * @param  array<int, string>|string  $columns
              * @return mixed
              */
             public function getRelationExistenceQuery($query, $parentQuery, $columns = ['*'])
@@ -163,15 +157,15 @@ class TestNotifiable implements HasFcmToken
      */
     public function hasFcmTokens(): bool
     {
-        return !empty($this->activeTokens);
+        return ! empty($this->activeTokens);
     }
 
     /**
      * Register a new FCM token.
      *
-     * @param string $token The token to register
-     * @param bool $isPrimary Whether this should be the primary token
-     * @param array<string, mixed> $metadata Additional token metadata
+     * @param  string  $token  The token to register
+     * @param  bool  $isPrimary  Whether this should be the primary token
+     * @param  array<string, mixed>  $metadata  Additional token metadata
      * @return FcmToken A token model instance (not persisted)
      */
     public function registerFcmToken(
@@ -185,7 +179,7 @@ class TestNotifiable implements HasFcmToken
             metadata: $metadata
         );
 
-        if (!in_array($token, $this->activeTokens, true)) {
+        if (! in_array($token, $this->activeTokens, true)) {
             $this->activeTokens[] = $token;
         }
 
@@ -199,12 +193,12 @@ class TestNotifiable implements HasFcmToken
     /**
      * Invalidate a specific FCM token.
      *
-     * @param string $token The token to invalidate
+     * @param  string  $token  The token to invalidate
      * @return bool True if token was found and invalidated
      */
     public function invalidateFcmToken(string $token): bool
     {
-        if (!in_array($token, $this->activeTokens, true)) {
+        if (! in_array($token, $this->activeTokens, true)) {
             return false;
         }
 
@@ -232,7 +226,7 @@ class TestNotifiable implements HasFcmToken
     /**
      * Get the FCM tokens for notification routing.
      *
-     * @param mixed $notification The notification being routed
+     * @param  mixed  $notification  The notification being routed
      * @return array<string>|null Array of tokens or null if none exist
      */
     public function routeNotificationForFcm($notification): ?array
@@ -253,14 +247,13 @@ class TestNotifiable implements HasFcmToken
     /**
      * Create a new FCM token model instance.
      *
-     * @param string $token The token string
-     * @param bool $isPrimary Whether this is a primary token
-     * @param array<string, mixed> $metadata Token metadata
-     * @return FcmToken
+     * @param  string  $token  The token string
+     * @param  bool  $isPrimary  Whether this is a primary token
+     * @param  array<string, mixed>  $metadata  Token metadata
      */
     private function createTokenModel(string $token, bool $isPrimary, array $metadata): FcmToken
     {
-        $tokenModel = new FcmToken();
+        $tokenModel = new FcmToken;
         $tokenModel->token = $token;
         $tokenModel->is_primary = $isPrimary;
         $tokenModel->metadata = $metadata;
@@ -276,8 +269,7 @@ class TestNotifiable implements HasFcmToken
      * In this test implementation, we don't need to demote other tokens
      * as primary status is determined by order in the active tokens array.
      *
-     * @param string $token The token to promote
-     * @return void
+     * @param  string  $token  The token to promote
      */
     private function promoteTokenToPrimary(string $token): void
     {

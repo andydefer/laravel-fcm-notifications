@@ -7,6 +7,7 @@ namespace Andydefer\FcmNotifications\Tests;
 use Andydefer\FcmNotifications\FcmNotificationServiceProvider;
 use Andydefer\FcmNotifications\Tests\Fixtures\TestNotifiable;
 use Andydefer\FcmNotifications\Tests\Fixtures\TestUser;
+use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Orchestra\Testbench\TestCase as OrchestraTestCase;
@@ -17,8 +18,6 @@ use Orchestra\Testbench\TestCase as OrchestraTestCase;
  * This abstract class provides the foundation for all tests in the package,
  * setting up the test environment, database configuration, and common helper
  * methods for creating test fixtures and mock objects.
- *
- * @package Andydefer\FcmNotifications\Tests
  */
 abstract class TestCase extends OrchestraTestCase
 {
@@ -27,7 +26,7 @@ abstract class TestCase extends OrchestraTestCase
     /**
      * The path to the test fixtures directory.
      */
-    private const FIXTURES_PATH = __DIR__ . '/Fixtures';
+    private const FIXTURES_PATH = __DIR__.'/Fixtures';
 
     /**
      * The name of the Firebase credentials file for testing.
@@ -47,8 +46,6 @@ abstract class TestCase extends OrchestraTestCase
      *
      * This method is called before every test method to ensure a clean
      * and properly configured testing environment.
-     *
-     * @return void
      */
     protected function setUp(): void
     {
@@ -63,7 +60,7 @@ abstract class TestCase extends OrchestraTestCase
      * This method registers the FCM Notification Service Provider with
      * the testbench application.
      *
-     * @param \Illuminate\Foundation\Application $app
+     * @param  Application  $app
      * @return array<int, class-string>
      */
     protected function getPackageProviders($app): array
@@ -79,8 +76,7 @@ abstract class TestCase extends OrchestraTestCase
      * This method sets up the database configuration and package-specific
      * settings for the testing environment.
      *
-     * @param \Illuminate\Foundation\Application $app
-     * @return void
+     * @param  Application  $app
      */
     protected function defineEnvironment($app): void
     {
@@ -91,8 +87,7 @@ abstract class TestCase extends OrchestraTestCase
     /**
      * Configure the test database connection.
      *
-     * @param \Illuminate\Foundation\Application $app
-     * @return void
+     * @param  Application  $app
      */
     private function configureTestDatabase($app): void
     {
@@ -108,8 +103,7 @@ abstract class TestCase extends OrchestraTestCase
     /**
      * Configure package-specific settings for testing.
      *
-     * @param \Illuminate\Foundation\Application $app
-     * @return void
+     * @param  Application  $app
      */
     private function configurePackageSettings($app): void
     {
@@ -126,8 +120,6 @@ abstract class TestCase extends OrchestraTestCase
      *
      * This method loads both the package migrations and the test-specific
      * migrations required for the test suite.
-     *
-     * @return void
      */
     protected function defineDatabaseMigrations(): void
     {
@@ -137,22 +129,18 @@ abstract class TestCase extends OrchestraTestCase
 
     /**
      * Load the package's migration files.
-     *
-     * @return void
      */
     private function loadPackageMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
     }
 
     /**
      * Load the test-specific migration files.
-     *
-     * @return void
      */
     private function loadTestMigrations(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/database/migrations');
     }
 
     /**
@@ -160,8 +148,6 @@ abstract class TestCase extends OrchestraTestCase
      *
      * This ensures tests run faster and don't produce side effects
      * from logging or queued jobs.
-     *
-     * @return void
      */
     private function disableLoggingAndQueue(): void
     {
@@ -171,12 +157,10 @@ abstract class TestCase extends OrchestraTestCase
 
     /**
      * Get the path to the Firebase credentials file for testing.
-     *
-     * @return string
      */
     private function getFirebaseCredentialsPath(): string
     {
-        return self::FIXTURES_PATH . '/' . self::FIREBASE_CREDENTIALS_FILE;
+        return self::FIXTURES_PATH.'/'.self::FIREBASE_CREDENTIALS_FILE;
     }
 
     /**
@@ -185,8 +169,7 @@ abstract class TestCase extends OrchestraTestCase
      * This factory method creates a TestUser instance with default or
      * custom attributes for use in tests.
      *
-     * @param array<string, mixed> $attributes Custom attributes to override defaults
-     * @return TestUser
+     * @param  array<string, mixed>  $attributes  Custom attributes to override defaults
      *
      * @example
      * ```php
@@ -207,8 +190,7 @@ abstract class TestCase extends OrchestraTestCase
      * the HasFcmToken interface, useful for testing scenarios where a
      * database-backed model isn't needed.
      *
-     * @param array<string> $tokens Initial FCM tokens to associate with the notifiable
-     * @return TestNotifiable
+     * @param  array<string>  $tokens  Initial FCM tokens to associate with the notifiable
      *
      * @example
      * ```php
@@ -226,8 +208,7 @@ abstract class TestCase extends OrchestraTestCase
      * This helper method generates consistent token strings for use in tests,
      * ensuring test isolation and reproducibility.
      *
-     * @param string $token Optional custom token value
-     * @return string
+     * @param  string  $token  Optional custom token value
      *
      * @example
      * ```php

@@ -7,8 +7,8 @@ namespace Andydefer\FcmNotifications\Tests\Unit\Models;
 use Andydefer\FcmNotifications\Models\FcmToken;
 use Andydefer\FcmNotifications\Tests\Fixtures\TestUser;
 use Andydefer\FcmNotifications\Tests\TestCase;
-use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 
 /**
  * Unit tests for the FcmToken model.
@@ -18,8 +18,6 @@ use Illuminate\Database\Eloquent\Collection;
  * - Model scopes for filtering tokens
  * - Relationships with notifiable entities
  * - Token invalidation and status management
- *
- * @package Andydefer\FcmNotifications\Tests\Unit\Models
  */
 class FcmTokenTest extends TestCase
 {
@@ -30,8 +28,6 @@ class FcmTokenTest extends TestCase
      * - Token is properly instantiated as an FcmToken model
      * - All provided attributes are correctly saved
      * - JSON metadata is properly cast to array
-     *
-     * @return void
      */
     public function test_can_create_token_with_all_attributes(): void
     {
@@ -59,8 +55,6 @@ class FcmTokenTest extends TestCase
      * Test that last_used_at is automatically set when not provided.
      *
      * Verifies the model's default value behavior for the last_used_at timestamp.
-     *
-     * @return void
      */
     public function test_automatically_sets_last_used_timestamp_on_creation(): void
     {
@@ -84,8 +78,6 @@ class FcmTokenTest extends TestCase
      *
      * Verifies that the scope correctly includes valid tokens
      * and excludes invalid ones.
-     *
-     * @return void
      */
     public function test_valid_scope_returns_only_valid_tokens(): void
     {
@@ -114,8 +106,6 @@ class FcmTokenTest extends TestCase
      *
      * Verifies that the scope correctly identifies tokens that haven't
      * been used since a specified cutoff date.
-     *
-     * @return void
      */
     public function test_not_used_since_scope_filters_by_inactivity(): void
     {
@@ -144,8 +134,6 @@ class FcmTokenTest extends TestCase
      *
      * Verifies that the token can correctly access its parent model
      * through the tokenable relationship.
-     *
-     * @return void
      */
     public function test_tokenable_relationship_returns_owning_model(): void
     {
@@ -154,7 +142,7 @@ class FcmTokenTest extends TestCase
 
         /** @var FcmToken $token */
         $token = $user->fcmTokens()->create([
-            'token' => 'test-device-token'
+            'token' => 'test-device-token',
         ]);
 
         // Act: Access the tokenable relationship
@@ -171,8 +159,6 @@ class FcmTokenTest extends TestCase
      *
      * Verifies that the is_valid flag can be toggled to false,
      * effectively invalidating the token for future notifications.
-     *
-     * @return void
      */
     public function test_can_mark_token_as_invalid(): void
     {
