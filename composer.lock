@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d7399b2f408b1bdcf1d14b8f581c5d8b",
+    "content-hash": "e4f3eccc26354a7beaf9d35324e7d2a7",
     "packages": [
         {
             "name": "andydefer/domain-structures",
@@ -59,16 +59,16 @@
         },
         {
             "name": "andydefer/laravel-directive",
-            "version": "v3.26.0",
+            "version": "v3.27.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/andydefer/laravel-directive.git",
-                "reference": "04d68f32dbac7b43ab099d6c88217e78d50b35a8"
+                "reference": "ea922e4c55818696d4549e68f1556fd676f68bc0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/andydefer/laravel-directive/zipball/04d68f32dbac7b43ab099d6c88217e78d50b35a8",
-                "reference": "04d68f32dbac7b43ab099d6c88217e78d50b35a8",
+                "url": "https://api.github.com/repos/andydefer/laravel-directive/zipball/ea922e4c55818696d4549e68f1556fd676f68bc0",
+                "reference": "ea922e4c55818696d4549e68f1556fd676f68bc0",
                 "shasum": ""
             },
             "require": {
@@ -116,9 +116,9 @@
             "description": "A flexible CLI command system for Laravel that breaks free from Artisan's constraints. Directives introduces a clean separation between what your command does (business logic) and how it's presented (output/UI).",
             "support": {
                 "issues": "https://github.com/andydefer/laravel-directive/issues",
-                "source": "https://github.com/andydefer/laravel-directive/tree/v3.26.0"
+                "source": "https://github.com/andydefer/laravel-directive/tree/v3.27.0"
             },
-            "time": "2026-06-16T00:26:16+00:00"
+            "time": "2026-06-16T00:51:56+00:00"
         },
         {
             "name": "andydefer/php-services",
